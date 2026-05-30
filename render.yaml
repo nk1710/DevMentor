@@ -1,11 +1,10 @@
 services:
   - type: web
     name: devmentor-backend
-    env: java
+    env: docker
     plan: free
     rootDir: backened
-    buildCommand: ./gradlew clean build -x test
-    startCommand: java -jar build/libs/app.jar
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
       - key: SPRING_PROFILES_ACTIVE
