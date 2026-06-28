@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DevMentor API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+        .api-info {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .endpoint {
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DevMentor Backend API</h1>
+        <p>API is running successfully!</p>
+        
+        <div class="api-info">
+            <h3>Available Endpoints:</h3>
+            <div class="endpoint">POST /api/auth/register</div>
+            <div class="endpoint">POST /api/auth/login</div>
+            <div class="endpoint">GET /api/mentors</div>
+            <div class="endpoint">POST /api/sessions</div>
+            <div class="endpoint">GET /api/sessions/{id}</div>
+        </div>
+        
+        <p><strong>Status:</strong> <span style="color: #4CAF50;">Online</span></p>
+        <p><small>Error: {{status}} - {{error}}</small></p>
+    </div>
+</body>
+</html>
