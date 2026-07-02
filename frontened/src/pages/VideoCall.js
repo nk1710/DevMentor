@@ -4,8 +4,10 @@ import AgoraRTC from 'agora-rtc-sdk-ng';
 import { getCurrentUser } from '../utils/auth';
 import { getAgoraToken } from '../services/agoraService';
 
-// ✅ Naya App ID jo testing mode me banaya
-const APP_ID = process.env.REACT_APP_AGORA_APP_ID || '08c217e0c50e4940a2abe4e28322b1a3';
+const APP_ID = process.env.REACT_APP_AGORA_APP_ID;
+if (!APP_ID) {
+  console.error('REACT_APP_AGORA_APP_ID is not configured');
+}
 
 function VideoCall() {
   const { roomId } = useParams();
@@ -65,10 +67,19 @@ function VideoCall() {
         const tokenResponse = await getAgoraToken(roomId, uid);
         joinToken = tokenResponse.data?.token || null;
       } catch (e) {
-        console.warn('Agora token endpoint unavailable, joining without token.', e);
+        if (!APP_ID) {
+          setError('Agora App ID not configured. Set REACT_APP_AGORA_APP_ID in environment.');
+          setStatus('Failed ❌');
+          return;
+        }
       }
 
-      // ✅ Testing mode — null token
+      if (!APP_ID) {
+        setError('Agora App ID not configured. Set REACT_APP_AGORA_APP_ID in environment.');
+        setStatus('Failed ❌');
+        return;
+      }
+
       setStatus('Joining channel...');
       await clientRef.current.join(
         APP_ID,
@@ -80,18 +91,22 @@ function VideoCall() {
       setStatus('Getting camera/mic...');
       let micTrack = null;
       let camTrack = null;
+      let camFailed = false, micFailed = false;
 
       try {
         micTrack = await AgoraRTC.createMicrophoneAudioTrack();
-      } catch (e) {
-        setError('⚠️ Microphone access denied');
-      }
+      } catch (e) { micFailed = true; }
 
       try {
         camTrack = await AgoraRTC.createCameraVideoTrack();
-      } catch (e) {
+      } catch (e) { camFailed = true; }
+
+      if (micFailed && camFailed)
+        setError('⚠️ Microphone and camera access denied');
+      else if (micFailed)
+        setError('⚠️ Microphone access denied');
+      else if (camFailed)
         setError('⚠️ Camera access denied');
-      }
 
       const tracks = [micTrack, camTrack].filter(Boolean);
       localTracksRef.current = tracks;
@@ -112,8 +127,7 @@ function VideoCall() {
       }, 1000);
 
     } catch (err) {
-      console.error('Full error:', err);
-      setError(`Error: ${err.message}`);
+      setError('Connection failed. Please try again.');
       setStatus('Failed ❌');
     }
   }, [roomId, user?.id]);
@@ -124,10 +138,13 @@ function VideoCall() {
       track?.stop();
       track?.close();
     });
-    if (clientRef.current) {
-      await clientRef.current.leave();
+    localTracksRef.current = [];
+    if (clientRef.current && joined) {
+      try {
+        await clientRef.current.leave();
+      } catch {}
     }
-  }, []);
+  }, [joined]);
 
   const handleLeave = async () => {
     await leaveCall();
@@ -222,11 +239,8 @@ function VideoCall() {
                   Waiting for other person...
                 </p>
                 <p className="text-slate-500 text-sm mt-2">
-                  Unhe yahi link share karo
+                  Share this link with the other person
                 </p>
-                <div className="mt-4 bg-slate-900 px-4 py-2 rounded-lg text-xs text-slate-400 font-mono break-all max-w-sm">
-                  {window.location.href}
-                </div>
               </div>
             </div>
           ) : (

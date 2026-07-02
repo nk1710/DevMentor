@@ -8,10 +8,18 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Build args for React env vars
+ARG REACT_APP_API_URL=http://localhost:8080/api
+ARG REACT_APP_RAZORPAY_KEY_ID=
+ARG REACT_APP_AGORA_APP_ID=
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+ENV REACT_APP_RAZORPAY_KEY_ID=$REACT_APP_RAZORPAY_KEY_ID
+ENV REACT_APP_AGORA_APP_ID=$REACT_APP_AGORA_APP_ID
 
 # Build the application
 RUN npm run build

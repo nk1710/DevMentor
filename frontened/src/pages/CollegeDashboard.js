@@ -46,7 +46,7 @@ function CollegeDashboard() {
                 getAllMentors()
             ]);
             setCollege(c.data);
-            setSessions(s.data);
+            setSessions(s.data || []);
             setMentors(m.data);
         } catch (err) {
             console.error(err);
@@ -73,7 +73,7 @@ function CollegeDashboard() {
                     scheduledDate: bookForm.scheduledDate,
                     scheduledTime: bookForm.scheduledTime,
                     sessionType: bookForm.sessionType,
-                    maxStudents: parseInt(bookForm.maxStudents)
+                    maxStudents: parseInt(bookForm.maxStudents, 10) || 0
                 }
             );
             alert('Session booked! ✅');

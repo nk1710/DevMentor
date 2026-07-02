@@ -30,22 +30,30 @@ function Login() {
             res = await loginUser({ email, password });
         }
 
-        if (res.data && res.data.token) {
+        if (res.data && res.data.role) {
             saveAuth(res.data);
+            setPassword('');
             if (res.data.role === 'MENTOR') {
                 navigate('/mentor-dashboard');
             } else if (res.data.role === 'COLLEGE') {
                 navigate('/college-dashboard');
+            } else if (res.data.role === 'ADMIN') {
+                navigate('/admin');
             } else {
                 navigate('/user-dashboard');
             }
+        } else {
+            setError('Login failed. Please try again.');
         }
     } catch (err) {
-        console.error('Login error:', err.response?.data);
         if (err.response?.status === 401) {
             setError('Invalid email or password');
+        } else if (err.response?.status === 400) {
+            setError('Invalid input');
+        } else if (err.response?.status >= 500) {
+            setError('Server error. Please try again later.');
         } else {
-            setError('Login failed: ' + (err.response?.data || err.message));
+            setError('Something went wrong. Please try again.');
         }
     }
     setLoading(false);

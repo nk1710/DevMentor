@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { Component } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -22,8 +22,57 @@ import AboutUs from './pages/AboutUs';
 import ContactUs from './pages/ContactUs';
 import RefundPolicy from './pages/RefundPolicy';
 
-// Video Call aur Admin me footer/navbar nahi chahiye
 const NO_NAVBAR_ROUTES = ['/call/', '/admin'];
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('ErrorBoundary caught:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#080B1A] flex flex-col items-center justify-center text-white p-8">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
+          <p className="text-slate-400 mb-6 text-center max-w-md">
+            An unexpected error occurred. Please refresh the page or try again.
+          </p>
+          <button
+            onClick={() => { this.setState({ hasError: false }); window.location.href = '/'; }}
+            className="px-6 py-3 bg-indigo-600 rounded-xl hover:bg-indigo-700 transition font-semibold"
+          >
+            Go Home
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function NotFoundPage() {
+  const navigate = useNavigate();
+  return (
+    <div className="min-h-screen bg-[#080B1A] flex flex-col items-center justify-center text-white p-8">
+      <div className="text-8xl mb-4 font-bold text-indigo-400">404</div>
+      <h1 className="text-2xl font-bold mb-2">Page not found</h1>
+      <p className="text-slate-400 mb-6">The page you are looking for does not exist.</p>
+      <button
+        onClick={() => navigate('/')}
+        className="px-6 py-3 bg-indigo-600 rounded-xl hover:bg-indigo-700 transition font-semibold"
+      >
+        Go Home
+      </button>
+    </div>
+  );
+}
 
 function AppContent() {
     const location = window.location.pathname;
@@ -37,7 +86,6 @@ function AppContent() {
 
             <main className="flex-1">
                 <Routes>
-                    {/* Public */}
                     <Route path="/" element={<Home />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
@@ -49,7 +97,6 @@ function AppContent() {
                     <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
                     <Route path="/refund-policy" element={<RefundPolicy />} />
 
-                    {/* Protected */}
                     <Route path="/user-dashboard" element={
                         <ProtectedRoute><UserDashboard /></ProtectedRoute>
                     } />
@@ -71,13 +118,13 @@ function AppContent() {
                     <Route path="/call/:roomId" element={
                         <ProtectedRoute><VideoCall /></ProtectedRoute>
                     } />
-
-                    {/* Admin */}
                     <Route path="/admin" element={
                         <ProtectedRoute adminOnly={true}>
                             <AdminDashboard />
                         </ProtectedRoute>
                     } />
+
+                    <Route path="*" element={<NotFoundPage />} />
                 </Routes>
             </main>
 
@@ -89,7 +136,9 @@ function AppContent() {
 function App() {
     return (
         <Router>
-            <AppContent />
+            <ErrorBoundary>
+                <AppContent />
+            </ErrorBoundary>
         </Router>
     );
 }

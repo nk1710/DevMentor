@@ -1,9 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { getUserBookings } from '../services/api';
 
 function PaymentSuccess() {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const [booking, setBooking] = useState(null);
+
+  useEffect(() => {
+    if (state?.bookingId) {
+      setBooking({
+        bookingId: state.bookingId,
+        paymentId: state.paymentId,
+        amount: state.amount,
+        mentor: state.mentor,
+        slot: state.slot
+      });
+      return;
+    }
+    getUserBookings().then(res => {
+      const latest = (res.data || [])[0];
+      if (latest) {
+        setBooking({
+          bookingId: latest.id,
+          paymentId: latest.paymentId,
+          amount: latest.amountPaid,
+          mentor: latest.mentor,
+          slot: latest.slot
+        });
+      }
+    }).catch(() => {});
+  }, [state]);
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white flex items-center justify-center">
@@ -15,28 +42,48 @@ function PaymentSuccess() {
           Your session has been booked successfully
         </p>
 
-        {state && (
+        {booking ? (
           <div className="bg-slate-900 rounded-xl p-6 mb-8 text-left space-y-3">
             <div className="flex justify-between">
               <span className="text-slate-400">Mentor</span>
-              <span className="font-medium">{state.mentor?.name}</span>
+              <span className="font-medium">{booking.mentor?.name || 'N/A'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Date</span>
-              <span className="font-medium">{state.slot?.date}</span>
+              <span className="font-medium">{booking.slot?.date || 'N/A'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Time</span>
               <span className="font-medium">
-                {state.slot?.startTime} - {state.slot?.endTime}
+                {booking.slot?.startTime} - {booking.slot?.endTime}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Payment ID</span>
-              <span className="font-medium text-green-400 text-xs">
-                {state.paymentId}
-              </span>
-            </div>
+            {booking.paymentId && (
+              <div className="flex justify-between">
+                <span className="text-slate-400">Payment ID</span>
+                <span className="font-medium text-green-400 text-xs">
+                  {booking.paymentId}
+                </span>
+              </div>
+            )}
+            {booking.bookingId && (
+              <div className="flex justify-between">
+                <span className="text-slate-400">Booking ID</span>
+                <span className="font-medium text-indigo-400 text-xs">
+                  #{booking.bookingId}
+                </span>
+              </div>
+            )}
+            {booking.amount && (
+              <div className="flex justify-between">
+                <span className="text-slate-400">Amount Paid</span>
+                <span className="font-medium">₹{(booking.amount / 100).toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-slate-900 rounded-xl p-6 mb-8 text-center">
+            <p className="text-slate-400">Payment completed successfully</p>
           </div>
         )}
 

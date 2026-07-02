@@ -1,37 +1,63 @@
 package com.example.demo.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
-@Table(name = "mentors")
+@Table(name = "mentors", uniqueConstraints = {
+    @UniqueConstraint(columnNames = "email")
+}, indexes = {
+    @Index(name = "idx_mentor_email", columnList = "email"),
+    @Index(name = "idx_mentor_skills", columnList = "skills"),
+    @Index(name = "idx_mentor_available", columnList = "is_available")
+})
 public class Mentor {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank
+    @Size(max = 100)
     private String name;
+    @Column(unique = true)
+    @NotBlank
+    @Email
+    @Size(max = 255)
     private String email;
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @NotBlank
+    @Size(min = 6, max = 255)
     private String password;
+    @Size(max = 2000)
     private String skills;
+    @Size(max = 100)
     private String experience;
+    @Min(0)
     private Double pricePerHour;
+    @Min(0)
     private Double pricePerMinute;
+    @Min(0)
+    @Max(5)
     private Double rating;
+    @Size(max = 2000)
     private String bio;
+    @Size(max = 255)
     private String location;
     private String profilePicture;
+    @Size(max = 500)
     private String resumeUrl;
+    @Size(max = 20)
     private String phone;
+    @Size(max = 500)
     private String linkedinUrl;
+    @Size(max = 500)
     private String githubUrl;
+    @Size(max = 100)
     private String designation;
     private Integer totalSessions;
     private Boolean isAvailable;
-
-    // Role field add kiya
     private String role = "MENTOR";
 
     public Long getId() { return id; }

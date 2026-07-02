@@ -36,11 +36,11 @@ function EditProfile() {
         githubUrl: d.githubUrl || '',
         skills: d.skills || '',
         designation: d.designation || '',
-        pricePerHour: d.pricePerHour || '',
-        pricePerMinute: d.pricePerMinute || '',
+        pricePerHour: d.pricePerHour ?? '',
+        pricePerMinute: d.pricePerMinute ?? '',
         experience: d.experience || ''
       });
-    });
+    }).catch(() => {});
   }, [isMentorRole, navigate, user]);
 
   const handleChange = (e) => {
@@ -176,6 +176,7 @@ function EditProfile() {
                     Price per Hour (₹)
                   </label>
                   <input
+                    type="number" step="0.01" min="0"
                     name="pricePerHour" value={form.pricePerHour}
                     onChange={handleChange} placeholder="500"
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
@@ -186,6 +187,7 @@ function EditProfile() {
                     Price per Minute (₹)
                   </label>
                   <input
+                    type="number" step="0.01" min="0"
                     name="pricePerMinute" value={form.pricePerMinute}
                     onChange={handleChange} placeholder="10"
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"

@@ -1,7 +1,10 @@
 package com.example.demo.controller;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/agora")
@@ -11,30 +14,35 @@ public class AgoraTokenController {
     private String appId;
 
     @GetMapping("/token")
-    public AgoraTokenResponse getToken(
+    public ResponseEntity<?> getToken(
             @RequestParam String channelName,
-            @RequestParam(defaultValue = "0") Integer uid) {
-        // Current deployment supports Agora testing mode. For secured channels,
-        // wire an Agora token builder here and return a signed token.
-        return new AgoraTokenResponse(appId, channelName, uid, null, false);
+            @RequestParam(defaultValue = "0") Long uid) {
+
+        if (appId == null || appId.isBlank()) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Agora App ID not configured"));
+        }
+
+        return ResponseEntity.ok(Map.of(
+            "appId", appId,
+            "channelName", channelName,
+            "uid", uid,
+            "token", (Object) null,
+            "tokenRequired", false
+        ));
     }
 
     @GetMapping("/config")
-    public AgoraConfigResponse getConfig() {
-        return new AgoraConfigResponse(appId);
+    public ResponseEntity<?> getConfig() {
+        if (appId == null || appId.isBlank()) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("error", "Agora App ID not configured"));
+        }
+        return ResponseEntity.ok(Map.of("appId", appId));
     }
 
     @GetMapping("/health")
-    public String health() {
-        return "OK";
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("OK");
     }
-
-    public record AgoraTokenResponse(
-            String appId,
-            String channelName,
-            Integer uid,
-            String token,
-            boolean tokenRequired) {}
-
-    public record AgoraConfigResponse(String appId) {}
 }

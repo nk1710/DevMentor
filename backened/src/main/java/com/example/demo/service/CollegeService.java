@@ -1,8 +1,11 @@
 package com.example.demo.service;
 
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.entity.College;
 import com.example.demo.entity.CollegeSession;
 import com.example.demo.entity.Mentor;
@@ -12,8 +15,10 @@ import com.example.demo.repository.MentorRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.UUID;
 
 @Service
+@Transactional
 public class CollegeService {
 
     @Autowired
@@ -28,8 +33,16 @@ public class CollegeService {
     private BCryptPasswordEncoder encoder =
         new BCryptPasswordEncoder();
 
-    // ✅ Register
     public College register(College college) {
+        if (college.getPassword() == null || college.getPassword().length() < 6) {
+            throw new IllegalArgumentException("Password must be at least 6 characters");
+        }
+        if (college.getEmail() == null || !college.getEmail().matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
+            throw new IllegalArgumentException("Invalid email format");
+        }
+        if (collegeRepository.findByEmail(college.getEmail()) != null) {
+            throw new IllegalArgumentException("Email already registered");
+        }
         college.setPassword(
             encoder.encode(college.getPassword())
         );
@@ -38,8 +51,8 @@ public class CollegeService {
         return collegeRepository.save(college);
     }
 
-    // ✅ Login
     public College login(String email, String password) {
+        if (email == null || password == null) return null;
         College college =
             collegeRepository.findByEmail(email);
         if (college == null) return null;
@@ -49,20 +62,18 @@ public class CollegeService {
         return null;
     }
 
-    // ✅ All colleges
     public List<College> getAllColleges() {
         return collegeRepository.findAll();
     }
 
-    // ✅ By ID
     public College getCollegeById(Long id) {
         return collegeRepository
             .findById(id).orElse(null);
     }
 
-    // ✅ Plan upgrade
     public College upgradePlan(Long id,
             String plan, String expiry) {
+        if (plan == null || expiry == null) return null;
         College college = collegeRepository
             .findById(id).orElse(null);
         if (college == null) return null;
@@ -71,12 +82,10 @@ public class CollegeService {
         return collegeRepository.save(college);
     }
 
-    // ✅ Delete
     public void deleteCollege(Long id) {
-        collegeRepository.deleteById(id);
+        collegeRepository.findById(id).ifPresent(c -> collegeRepository.delete(c));
     }
 
-    // ✅ Book session
     public CollegeSession bookSession(
             Long collegeId, Long mentorId,
             CollegeSession session) {
@@ -89,29 +98,39 @@ public class CollegeService {
         if (college == null || mentor == null)
             return null;
 
+        if (session.getScheduledDate() != null && session.getScheduledTime() != null) {
+            List<CollegeSession> existing = sessionRepository.findByMentorId(mentorId);
+            for (CollegeSession es : existing) {
+                boolean sameDate = es.getScheduledDate() != null
+                    && es.getScheduledDate().equals(session.getScheduledDate());
+                boolean timeOverlaps = es.getScheduledTime() != null
+                    && es.getScheduledTime().equals(session.getScheduledTime());
+                boolean isActive = !"CANCELLED".equals(es.getStatus())
+                    && !"COMPLETED".equals(es.getStatus());
+                if (sameDate && timeOverlaps && isActive) {
+                    return null;
+                }
+            }
+        }
+
         session.setCollege(college);
         session.setMentor(mentor);
         session.setStatus("PENDING");
-        session.setRoomId("college-" + collegeId
-            + "-" + mentorId + "-"
-            + System.currentTimeMillis());
+        session.setRoomId("cs-" + UUID.randomUUID().toString().substring(0, 12));
 
         return sessionRepository.save(session);
     }
 
-    // ✅ College sessions
     public List<CollegeSession> getCollegeSessions(
             Long collegeId) {
         return sessionRepository
             .findByCollegeId(collegeId);
     }
 
-    // ✅ All sessions
     public List<CollegeSession> getAllSessions() {
         return sessionRepository.findAll();
     }
 
-    // ✅ Update session status
     public CollegeSession updateSessionStatus(
             Long sessionId, String status) {
         CollegeSession session = sessionRepository
@@ -121,53 +140,52 @@ public class CollegeService {
         return sessionRepository.save(session);
     }
 
-    // ✅ Add questions
     public CollegeSession addQuestions(
             Long sessionId, String questions) {
         CollegeSession session = sessionRepository
             .findById(sessionId).orElse(null);
         if (session == null) return null;
-        session.setQuestions(questions);
+        session.setQuestions(Jsoup.clean(questions, Safelist.none()));
         return sessionRepository.save(session);
     }
 
-    // Payment order create karo
-public Map<String, Object> createPaymentOrder(
-        Long collegeId, String plan) {
+    public Map<String, Object> createPaymentOrder(
+            Long collegeId, String plan) {
 
-    Map<String, Object> order = new HashMap<>();
+        Map<String, Object> order = new HashMap<>();
 
-    // Plan ke hisaab se amount
-    int amount = 0;
-    switch (plan) {
-        case "BASIC": amount = 999900; break;      // ₹9,999
-        case "PRO": amount = 1999900; break;        // ₹19,999
-        case "ENTERPRISE": amount = 3999900; break; // ₹39,999
+        int amount = 0;
+        switch (plan) {
+            case "BASIC": amount = 999900; break;
+            case "PRO": amount = 1999900; break;
+            case "ENTERPRISE": amount = 3999900; break;
+            default: amount = 0;
+        }
+
+        order.put("amount", amount);
+        order.put("currency", "INR");
+        order.put("plan", plan);
+        order.put("collegeId", collegeId);
+
+        return order;
     }
 
-    order.put("amount", amount);
-    order.put("currency", "INR");
-    order.put("plan", plan);
-    order.put("collegeId", collegeId);
+    public College activatePlan(Long collegeId,
+            String plan, String paymentId) {
+        if (plan == null || paymentId == null || paymentId.trim().isEmpty()) {
+            return null;
+        }
+        College college = collegeRepository
+            .findById(collegeId).orElse(null);
+        if (college == null) return null;
 
-    return order;
-}
+        college.setPlan(plan);
+        college.setIsActive(true);
 
-// Payment verify karo aur plan activate karo
-public College activatePlan(Long collegeId,
-        String plan, String paymentId) {
-    College college = collegeRepository
-        .findById(collegeId).orElse(null);
-    if (college == null) return null;
+        java.time.LocalDate expiry =
+            java.time.LocalDate.now().plusDays(30);
+        college.setSubscriptionExpiry(expiry.toString());
 
-    college.setPlan(plan);
-    college.setIsActive(true);
-
-    // 30 din ka subscription
-    java.time.LocalDate expiry =
-        java.time.LocalDate.now().plusDays(30);
-    college.setSubscriptionExpiry(expiry.toString());
-
-    return collegeRepository.save(college);
-}
+        return collegeRepository.save(college);
+    }
 }

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     getMentorBookings,
     addSlot,
+    getAvailableSlots,
     getMentorCollegeSessions,
     confirmCollegeSession,
     completeCollegeSession
@@ -12,6 +13,7 @@ import { getCurrentUser, logout } from '../utils/auth';
 function MentorDashboard() {
     const [bookings, setBookings] = useState([]);
     const [collegeSessions, setCollegeSessions] = useState([]);
+    const [slots, setSlots] = useState([]);
     const [slot, setSlot] = useState({
         date: '', startTime: '', endTime: ''
     });
@@ -31,6 +33,11 @@ function MentorDashboard() {
             getMentorBookings(mentor.id)
                 .then(res => setBookings(res.data || []))
                 .catch(() => setBookings([]));
+
+            // My available slots
+            getAvailableSlots(mentor.id)
+                .then(res => setSlots(res.data || []))
+                .catch(() => setSlots([]));
 
             // College sessions
             getMentorCollegeSessions(mentor.id)
@@ -53,11 +60,12 @@ function MentorDashboard() {
         setAdding(true);
         try {
             await addSlot(mentor.id, slot);
-            alert('Slot added! ✅');
+            alert('Slot added!');
             setSlot({ date: '', startTime: '', endTime: '' });
+            loadData();
         } catch (err) {
-            console.error('Error:', err.response?.data);
-            alert('Slot add failed: ' + err.response?.status);
+            const msg = err.response?.data || 'Slot add failed';
+            alert(typeof msg === 'string' ? msg : 'Slot add failed');
         }
         setAdding(false);
     };
@@ -217,6 +225,15 @@ function MentorDashboard() {
                 {/* Tab Buttons */}
                 <div className="flex gap-3 mb-6">
                     <button
+                        onClick={() => setActiveTab('slots')}
+                        className={`px-5 py-3 rounded-xl text-sm font-medium transition ${
+                            activeTab === 'slots'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-slate-800 text-slate-400 hover:text-white'
+                        }`}>
+                        🕐 My Slots ({slots.length})
+                    </button>
+                    <button
                         onClick={() => setActiveTab('bookings')}
                         className={`px-5 py-3 rounded-xl text-sm font-medium transition ${
                             activeTab === 'bookings'
@@ -235,6 +252,46 @@ function MentorDashboard() {
                         🏫 College Sessions ({collegeSessions.length})
                     </button>
                 </div>
+
+                {/* ─── My Available Slots ─── */}
+                {activeTab === 'slots' && (
+                    <div className="space-y-4">
+                        {slots.length === 0 ? (
+                            <div className="bg-slate-800/50 rounded-2xl p-12 border border-slate-700 text-center">
+                                <div className="text-5xl mb-4">📭</div>
+                                <p className="text-slate-400">
+                                    No slots created yet
+                                </p>
+                                <p className="text-slate-500 text-sm mt-2">
+                                    Use the form above to add your first slot
+                                </p>
+                            </div>
+                        ) : (
+                            slots.map(s => (
+                                <div key={s.id}
+                                    className="bg-slate-800/50 rounded-2xl p-6 border border-slate-700">
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <p className="font-semibold text-lg">
+                                                📅 {s.date}
+                                            </p>
+                                            <p className="text-slate-400 text-sm mt-1">
+                                                ⏰ {s.startTime} - {s.endTime}
+                                            </p>
+                                        </div>
+                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                            s.booked
+                                                ? 'bg-red-500/20 text-red-400'
+                                                : 'bg-green-500/20 text-green-400'
+                                        }`}>
+                                            {s.booked ? 'Booked' : 'Available'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
 
                 {/* ─── Individual Bookings ─── */}
                 {activeTab === 'bookings' && (

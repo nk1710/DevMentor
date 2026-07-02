@@ -6,6 +6,7 @@ import { getCurrentUser, logout } from '../utils/auth';
 function UserDashboard() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
   const user = useMemo(() => getCurrentUser(), []);
 
@@ -15,11 +16,11 @@ function UserDashboard() {
       return;
     }
     try {
-      const res = await getUserBookings(user.id);
-      console.log('Bookings data:', res.data); // F12 me dekho
-      setBookings(res.data);
+      const res = await getUserBookings();
+      setBookings(res.data || []);
     } catch (err) {
-      console.error('Bookings load error:', err);
+      setError('Failed to load bookings. Please try again.');
+      setBookings([]);
     }
     setLoading(false);
   }, [navigate, user]);
@@ -98,6 +99,12 @@ function UserDashboard() {
 
         {/* Bookings */}
         <h2 className="text-xl font-semibold mb-4">My Sessions</h2>
+
+        {error && (
+          <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm">
+            {error}
+          </div>
+        )}
 
         {bookings.length === 0 ? (
           <div className="bg-slate-800/50 rounded-2xl p-12 border border-slate-700 text-center">

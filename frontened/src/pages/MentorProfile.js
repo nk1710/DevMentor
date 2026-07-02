@@ -3,15 +3,26 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getMentorById, getAvailableSlots } from '../services/api';
 import { isLoggedIn } from '../utils/auth';
 
+const safeUrl = (url) => {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? url : null;
+  } catch {
+    return null;
+  }
+};
+
 function MentorProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [mentor, setMentor] = useState(null);
   const [slots, setSlots] = useState([]);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    getMentorById(id).then(res => setMentor(res.data));
-    getAvailableSlots(id).then(res => setSlots(res.data));
+    getMentorById(id).then(res => setMentor(res.data)).catch(() => setError('Failed to load mentor profile'));
+    getAvailableSlots(id).then(res => setSlots(res.data || [])).catch(() => setError('Failed to load slots'));
   }, [id]);
 
   const handleBookNow = (slotId) => {
@@ -21,6 +32,20 @@ function MentorProfile() {
     }
     navigate(`/payment/${slotId}/${id}`);
   };
+
+  if (error) return (
+    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+      <div className="text-center">
+        <div className="text-5xl mb-4">⚠️</div>
+        <h2 className="text-white text-2xl font-bold mb-2">Error</h2>
+        <p className="text-slate-400 mb-6">{error}</p>
+        <button onClick={() => navigate('/mentors')}
+          className="px-6 py-3 bg-indigo-600 rounded-xl hover:bg-indigo-700 transition font-semibold">
+          Back to Mentors
+        </button>
+      </div>
+    </div>
+  );
 
   if (!mentor) return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
@@ -69,7 +94,7 @@ function MentorProfile() {
 
               {/* Skills */}
               <div className="flex flex-wrap gap-2 mb-4">
-                {mentor.skills?.split(',').map((skill, i) => (
+                {(mentor.skills?.split(',') ?? []).map((skill, i) => (
                   <span key={i}
                     className="bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full text-sm">
                     {skill.trim()}
@@ -79,22 +104,22 @@ function MentorProfile() {
 
               {/* Links */}
               <div className="flex gap-4">
-                {mentor.linkedinUrl && (
-                  <a href={mentor.linkedinUrl} target="_blank" rel="noreferrer"
+                {safeUrl(mentor.linkedinUrl) && (
+                  <a href={safeUrl(mentor.linkedinUrl)} target="_blank" rel="noreferrer"
                     className="text-blue-400 hover:underline text-sm">
-                    🔗 LinkedIn
+                    LinkedIn
                   </a>
                 )}
-                {mentor.githubUrl && (
-                  <a href={mentor.githubUrl} target="_blank" rel="noreferrer"
+                {safeUrl(mentor.githubUrl) && (
+                  <a href={safeUrl(mentor.githubUrl)} target="_blank" rel="noreferrer"
                     className="text-slate-400 hover:underline text-sm">
-                    🐙 GitHub
+                    GitHub
                   </a>
                 )}
-                {mentor.resumeUrl && (
-                  <a href={mentor.resumeUrl} target="_blank" rel="noreferrer"
+                {safeUrl(mentor.resumeUrl) && (
+                  <a href={safeUrl(mentor.resumeUrl)} target="_blank" rel="noreferrer"
                     className="text-green-400 hover:underline text-sm">
-                    📄 Resume
+                    Resume
                   </a>
                 )}
               </div>
@@ -104,7 +129,7 @@ function MentorProfile() {
             <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700 min-w-[200px]">
               <div className="text-center mb-4">
                 <div className="text-3xl font-bold text-indigo-400">
-                  ₹{mentor.pricePerHour}
+                  ₹{mentor.pricePerHour || 'Not set'}
                 </div>
                 <div className="text-slate-400 text-sm">per hour</div>
                 {mentor.pricePerMinute && (

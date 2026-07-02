@@ -24,7 +24,7 @@ function Register() {
           password: form.password,
           skills: form.skills,
           experience: form.experience,
-          pricePerHour: parseFloat(form.pricePerHour),
+          pricePerHour: parseFloat(form.pricePerHour) || 0,
           rating: 0
         });
       } else if (form.role === 'COLLEGE') {
@@ -48,7 +48,16 @@ function Register() {
       alert('Registered successfully! ✅');
       navigate('/login');
     } catch (err) {
-      alert('Registration failed. Try again.');
+      if (err.response?.status === 400) {
+        const msg = typeof err.response.data === 'string'
+          ? err.response.data
+          : err.response.data?.error || 'Invalid input. Please check your information.';
+        alert('⚠️ ' + msg);
+      } else if (err.response?.status >= 500) {
+        alert('Server error. Please try again later.');
+      } else {
+        alert('Registration failed. Please try again.');
+      }
     }
   };
 

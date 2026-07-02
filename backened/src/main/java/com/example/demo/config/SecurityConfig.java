@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -22,6 +24,11 @@ public class SecurityConfig {
     private String allowedOrigins;
 
     @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(
             HttpSecurity http,
             JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
@@ -31,13 +38,13 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/", "/health").permitAll()
+                .requestMatchers("/", "/health", "/api/agora/health").permitAll()
                 .requestMatchers(HttpMethod.POST,
                         "/api/users/register", "/api/users/login",
                         "/api/mentors/register", "/api/mentors/login",
                         "/api/colleges/register", "/api/colleges/login").permitAll()
                 .requestMatchers(HttpMethod.GET,
-                        "/api/mentors/all", "/api/mentors/search", "/api/mentors/*",
+                        "/api/mentors/all", "/api/mentors/search", "/api/mentors/{id}",
                         "/api/slots/available/*").permitAll()
                 .requestMatchers(HttpMethod.GET,
                         "/api/users/all", "/api/bookings/all",
@@ -62,8 +69,9 @@ public class SecurityConfig {
                 .toList();
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowCredentials(true);
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setExposedHeaders(List.of("Authorization", "Set-Cookie"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
