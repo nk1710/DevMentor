@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.entity.*;
@@ -24,6 +25,8 @@ public class BookingService {
     @Autowired
     private MentorRepository mentorRepository;
 
+    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
     public synchronized Booking createBooking(Long userId, Long mentorId, Long slotId) {
         return createBooking(userId, mentorId, slotId, null);
     }
@@ -36,16 +39,29 @@ public class BookingService {
         if (userId != null) {
             user = userRepository.findById(userId).orElse(null);
         }
-        if (user == null && userEmail != null && !userEmail.trim().isEmpty()) {
+        if (user == null && userEmail != null && !userEmail.trim().isEmpty() && !userEmail.equalsIgnoreCase("anonymousUser")) {
             user = userRepository.findByEmail(userEmail.trim());
+        }
+
+        // Auto-restore user account from verified JWT if wiped during restart
+        if (user == null) {
+            if (userEmail != null && !userEmail.trim().isEmpty() && !userEmail.equalsIgnoreCase("anonymousUser")) {
+                user = new User();
+                user.setEmail(userEmail.trim());
+                String defaultName = userEmail.contains("@") ? userEmail.split("@")[0] : "User";
+                user.setName(defaultName);
+                user.setPassword(encoder.encode("Password@123"));
+                user.setRole("USER");
+                user = userRepository.save(user);
+                System.out.println("Auto-restored user from JWT: id=" + user.getId() + " email=" + user.getEmail());
+            } else {
+                throw new IllegalArgumentException("Your session has expired. Please log out and log in again.");
+            }
         }
 
         Mentor mentor = mentorRepository.findById(mentorId).orElse(null);
         Slot slot = slotRepository.findById(slotId).orElse(null);
 
-        if (user == null) {
-            throw new IllegalArgumentException("User not found (ID: " + userId + ")");
-        }
         if (mentor == null) {
             throw new IllegalArgumentException("Mentor not found (ID: " + mentorId + ")");
         }
