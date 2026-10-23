@@ -1,7 +1,7 @@
 services:
   - type: web
     name: devmentor-backend
-    env: docker
+    runtime: docker
     plan: free
     rootDir: backened
     dockerfilePath: ./Dockerfile
@@ -21,11 +21,18 @@ services:
         sync: false
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: AGORA_APP_ID
+        sync: false
+      - key: AGORA_APP_CERTIFICATE
+        sync: false
 
   - type: web
     name: devmentor-frontend
-    env: static
-    plan: free
+    runtime: static
     rootDir: frontened
     buildCommand: npm ci && npm run build
     staticPublishPath: build
@@ -37,4 +44,6 @@ services:
       - key: REACT_APP_API_URL
         sync: false
       - key: REACT_APP_RAZORPAY_KEY_ID
+        sync: false
+      - key: REACT_APP_AGORA_APP_ID
         sync: false
