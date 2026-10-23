@@ -19,24 +19,58 @@ function Login() {
         setLoading(true);
         setError('');
 
+        const cleanEmail = email.trim().toLowerCase();
+
         try {
             let res;
+            let loggedInRole = role;
 
-            if (role === 'MENTOR') {
-                res = await loginMentor({ email, password });
-            } else if (role === 'COLLEGE') {
-                res = await loginCollege({ email, password });
-            } else {
-                res = await loginUser({ email, password });
+            try {
+                if (role === 'MENTOR') {
+                    res = await loginMentor({ email: cleanEmail, password });
+                } else if (role === 'COLLEGE') {
+                    res = await loginCollege({ email: cleanEmail, password });
+                } else {
+                    res = await loginUser({ email: cleanEmail, password });
+                }
+            } catch (initialErr) {
+                // If 401 Unauthorized, automatically try other roles in case the user registered with a different role
+                if (initialErr.response?.status === 401) {
+                    if (role === 'USER') {
+                        try {
+                            res = await loginMentor({ email: cleanEmail, password });
+                            loggedInRole = 'MENTOR';
+                        } catch (mErr) {
+                            try {
+                                res = await loginCollege({ email: cleanEmail, password });
+                                loggedInRole = 'COLLEGE';
+                            } catch (cErr) {
+                                throw initialErr;
+                            }
+                        }
+                    } else if (role === 'MENTOR') {
+                        try {
+                            res = await loginUser({ email: cleanEmail, password });
+                            loggedInRole = 'USER';
+                        } catch (uErr) {
+                            throw initialErr;
+                        }
+                    } else {
+                        throw initialErr;
+                    }
+                } else {
+                    throw initialErr;
+                }
             }
 
-            if (res.data && res.data.token) {
+            if (res?.data && res.data.token) {
                 saveAuth(res.data);
-                if (res.data.role === 'MENTOR') {
+                const finalRole = res.data.role || loggedInRole;
+                if (finalRole === 'MENTOR') {
                     navigate('/mentor-dashboard');
-                } else if (res.data.role === 'COLLEGE') {
+                } else if (finalRole === 'COLLEGE') {
                     navigate('/college-dashboard');
-                } else if (res.data.role === 'ADMIN') {
+                } else if (finalRole === 'ADMIN') {
                     navigate('/admin');
                 } else {
                     navigate('/user-dashboard');
@@ -44,10 +78,11 @@ function Login() {
             }
         } catch (err) {
             console.error('Login error:', err.response?.data);
+            const serverMsg = err.response?.data?.message || (typeof err.response?.data === 'string' ? err.response?.data : null);
             if (err.response?.status === 401) {
-                setError('Invalid email or password');
+                setError('Invalid email or password. Please verify your credentials or select the correct role (Student / Mentor).');
             } else {
-                setError('Login failed: ' + (err.response?.data?.message || err.response?.data || err.message));
+                setError('Login failed: ' + (serverMsg || err.message));
             }
         }
         setLoading(false);

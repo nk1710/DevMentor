@@ -48,7 +48,7 @@ function Register() {
       alert('Registered successfully! ✅');
       navigate('/login');
     } catch (err) {
-      alert('Registration failed. Try again.');
+      const msg = err.response?.data?.message || (typeof err.response?.data === 'string' ? err.response?.data : null) || err.message; alert('Registration failed: ' + msg);
     }
   };
 

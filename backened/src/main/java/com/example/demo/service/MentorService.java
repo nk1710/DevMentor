@@ -19,11 +19,12 @@ public class MentorService {
         if (mentor.getEmail() == null || mentor.getEmail().trim().isEmpty()) {
             throw new IllegalArgumentException("Email is required");
         }
-        if (mentorRepository.findByEmail(mentor.getEmail().trim()) != null) {
-            throw new IllegalArgumentException("Email already registered: " + mentor.getEmail());
+        String cleanEmail = mentor.getEmail().trim().toLowerCase();
+        if (mentorRepository.findByEmail(cleanEmail) != null) {
+            throw new IllegalArgumentException("Email already registered: " + cleanEmail);
         }
         mentor.setRole("MENTOR");
-        mentor.setEmail(mentor.getEmail().trim().toLowerCase());
+        mentor.setEmail(cleanEmail);
         mentor.setPassword(encoder.encode(mentor.getPassword()));
         return mentorRepository.save(mentor);
     }
