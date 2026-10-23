@@ -6,7 +6,6 @@ import { getCurrentUser, logout } from '../utils/auth';
 function UserDashboard() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
   const user = useMemo(() => getCurrentUser(), []);
 
@@ -16,11 +15,10 @@ function UserDashboard() {
       return;
     }
     try {
-      const res = await getUserBookings();
+      const res = await getUserBookings(user.id);
       setBookings(res.data || []);
     } catch (err) {
-      setError('Failed to load bookings. Please try again.');
-      setBookings([]);
+      console.error('Bookings load error:', err);
     }
     setLoading(false);
   }, [navigate, user]);
@@ -37,38 +35,31 @@ function UserDashboard() {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white">
+      <div className="max-w-4xl mx-auto px-6 py-10">
 
-      {/* Navbar */}
-      <nav className="flex justify-between items-center px-10 py-5 border-b border-slate-800">
-        <div onClick={() => navigate('/')}
-          className="text-2xl font-bold text-indigo-400 cursor-pointer">
-          Dev<span className="text-white">Mentor</span>
-        </div>
-        <div className="flex gap-4 items-center">
-          <button
-            onClick={() => navigate('/edit-profile')}
-            className="text-slate-300 hover:text-white transition">
-            ✏️ Edit Profile
-          </button>
-          <button
-            onClick={() => navigate('/mentors')}
-            className="px-4 py-2 bg-indigo-600 rounded-xl hover:bg-indigo-700 transition">
-            Find Mentor
-          </button>
-          <button
-            onClick={logout}
-            className="text-slate-400 hover:text-white transition">
-            Logout
-          </button>
-        </div>
-      </nav>
-
-      <div className="max-w-4xl mx-auto px-6 py-12">
-
-        {/* Welcome */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-1">My Dashboard 📊</h1>
-          <p className="text-slate-400">Welcome back, {user?.name} 👋</p>
+        {/* Welcome & Actions */}
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-1">My Dashboard 📊</h1>
+            <p className="text-slate-400">Welcome back, {user?.name} 👋</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/edit-profile')}
+              className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 hover:text-white transition text-sm">
+              ✏️ Edit Profile
+            </button>
+            <button
+              onClick={() => navigate('/mentors')}
+              className="px-4 py-2 bg-indigo-600 rounded-xl hover:bg-indigo-700 transition text-sm font-medium">
+              Find Mentor
+            </button>
+            <button
+              onClick={logout}
+              className="px-4 py-2 bg-red-600/20 border border-red-500/30 text-red-400 hover:text-red-300 rounded-xl transition text-sm">
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -99,12 +90,6 @@ function UserDashboard() {
 
         {/* Bookings */}
         <h2 className="text-xl font-semibold mb-4">My Sessions</h2>
-
-        {error && (
-          <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm">
-            {error}
-          </div>
-        )}
 
         {bookings.length === 0 ? (
           <div className="bg-slate-800/50 rounded-2xl p-12 border border-slate-700 text-center">

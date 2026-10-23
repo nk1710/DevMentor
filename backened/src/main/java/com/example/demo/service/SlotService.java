@@ -2,17 +2,13 @@ package com.example.demo.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.entity.Mentor;
 import com.example.demo.entity.Slot;
 import com.example.demo.repository.MentorRepository;
 import com.example.demo.repository.SlotRepository;
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @Service
-@Transactional
 public class SlotService {
 
     @Autowired
@@ -22,26 +18,21 @@ public class SlotService {
     private MentorRepository mentorRepository;
 
     public Slot addSlot(Long mentorId, Slot slot) {
+        System.out.println("=== Adding slot for mentorId: " + mentorId);
+
         Mentor mentor = mentorRepository.findById(mentorId).orElse(null);
+
         if (mentor == null) {
-            throw new IllegalArgumentException("Mentor not found");
+            System.out.println("=== ERROR: Mentor not found for id: " + mentorId);
+            return null;
         }
 
-        if (slot.getDate() != null) {
-            try {
-                LocalDate slotDate = LocalDate.parse(slot.getDate());
-                if (slotDate.isBefore(LocalDate.now())) {
-                    throw new IllegalArgumentException("Cannot create slot for past date");
-                }
-            } catch (DateTimeParseException e) {
-                throw new IllegalArgumentException("Invalid date format. Use YYYY-MM-DD");
-            }
-        }
-
+        System.out.println("=== Mentor found: " + mentor.getName());
         slot.setMentor(mentor);
         slot.setBooked(false);
 
         Slot saved = slotRepository.save(slot);
+        System.out.println("=== Slot saved with id: " + saved.getId());
         return saved;
     }
 

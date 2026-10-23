@@ -54,7 +54,7 @@ function AdminDashboard() {
             setSessions(sessionRes.data || []);
         } catch (err) {
             console.error(err);
-            setError('Admin data load nahi ho paya. Token/role ya backend check karo.');
+            setError('Failed to load admin data. Please verify your token/role or backend connection.');
         }
         setLoading(false);
     }, []);

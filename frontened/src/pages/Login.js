@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser, loginMentor,  loginCollege } from '../services/api';
+import { loginUser, loginMentor, loginCollege } from '../services/api';
 import { saveAuth } from '../utils/auth';
 
 function Login() {
@@ -11,55 +11,50 @@ function Login() {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-   const handleLogin = async () => {
-    if (!email || !password) {
-        setError('Email aur password daalo!');
-        return;
-    }
-    setLoading(true);
-    setError('');
-
-    try {
-        let res;
-
-         if (role === 'MENTOR') {
-            res = await loginMentor({ email, password });
-        } else if (role === 'COLLEGE') {
-            res = await loginCollege({ email, password });
-        } else {
-            res = await loginUser({ email, password });
+    const handleLogin = async () => {
+        if (!email || !password) {
+            setError('Please enter both email and password!');
+            return;
         }
+        setLoading(true);
+        setError('');
 
-        if (res.data && res.data.role) {
-            saveAuth(res.data);
-            setPassword('');
-            if (res.data.role === 'MENTOR') {
-                navigate('/mentor-dashboard');
-            } else if (res.data.role === 'COLLEGE') {
-                navigate('/college-dashboard');
-            } else if (res.data.role === 'ADMIN') {
-                navigate('/admin');
+        try {
+            let res;
+
+            if (role === 'MENTOR') {
+                res = await loginMentor({ email, password });
+            } else if (role === 'COLLEGE') {
+                res = await loginCollege({ email, password });
             } else {
-                navigate('/user-dashboard');
+                res = await loginUser({ email, password });
             }
-        } else {
-            setError('Login failed. Please try again.');
+
+            if (res.data && res.data.token) {
+                saveAuth(res.data);
+                if (res.data.role === 'MENTOR') {
+                    navigate('/mentor-dashboard');
+                } else if (res.data.role === 'COLLEGE') {
+                    navigate('/college-dashboard');
+                } else if (res.data.role === 'ADMIN') {
+                    navigate('/admin');
+                } else {
+                    navigate('/user-dashboard');
+                }
+            }
+        } catch (err) {
+            console.error('Login error:', err.response?.data);
+            if (err.response?.status === 401) {
+                setError('Invalid email or password');
+            } else {
+                setError('Login failed: ' + (err.response?.data?.message || err.response?.data || err.message));
+            }
         }
-    } catch (err) {
-        if (err.response?.status === 401) {
-            setError('Invalid email or password');
-        } else if (err.response?.status === 400) {
-            setError('Invalid input');
-        } else if (err.response?.status >= 500) {
-            setError('Server error. Please try again later.');
-        } else {
-            setError('Something went wrong. Please try again.');
-        }
-    }
-    setLoading(false);
-};
+        setLoading(false);
+    };
+
     return (
-        <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+        <div className="min-h-screen bg-[#0f172a] flex items-center justify-center py-12 px-4">
             <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-8 w-full max-w-md">
 
                 <div className="text-center mb-8">
@@ -85,6 +80,7 @@ function Login() {
                     </label>
                     <div className="grid grid-cols-3 gap-2">
                         <button
+                            type="button"
                             onClick={() => setRole('USER')}
                             className={`py-3 rounded-xl font-medium transition ${
                                 role === 'USER'
@@ -94,6 +90,7 @@ function Login() {
                             👤 Student
                         </button>
                         <button
+                            type="button"
                             onClick={() => setRole('MENTOR')}
                             className={`py-3 rounded-xl font-medium transition ${
                                 role === 'MENTOR'
@@ -103,6 +100,7 @@ function Login() {
                             🧑‍💻 Mentor
                         </button>
                         <button
+                            type="button"
                             onClick={() => setRole('COLLEGE')}
                             className={`py-3 rounded-xl font-medium transition ${
                                 role === 'COLLEGE'
@@ -136,7 +134,7 @@ function Login() {
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                        onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                     />
                 </div>
@@ -145,15 +143,15 @@ function Login() {
                     onClick={handleLogin}
                     disabled={loading}
                     className="w-full py-4 bg-indigo-600 rounded-xl font-semibold text-lg hover:bg-indigo-700 transition disabled:opacity-50">
-                    {loading ? 'Logging in...' : 'Login 🚀'}
+                    {loading ? 'Logging in...' : 'Login'}
                 </button>
 
-                <p className="text-center text-slate-400 mt-4">
-                    Account nahi hai?{' '}
+                <p className="text-center text-slate-400 text-sm mt-6">
+                    Don't have an account?{' '}
                     <span
                         onClick={() => navigate('/register')}
                         className="text-indigo-400 cursor-pointer hover:underline">
-                        Register karo
+                        Register here
                     </span>
                 </p>
             </div>

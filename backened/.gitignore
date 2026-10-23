@@ -29,13 +29,9 @@ out/
 ### Runtime uploads ###
 uploads/
 
-### Node dependencies ###
-node_modules/
-
 ### Local env ###
 .env
 .env.local
-application-local.properties
 
 ### NetBeans ###
 /nbproject/private/

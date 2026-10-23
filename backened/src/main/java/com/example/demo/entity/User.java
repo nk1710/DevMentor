@@ -1,49 +1,28 @@
 package com.example.demo.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
-@Table(name = "users", uniqueConstraints = {
-    @UniqueConstraint(columnNames = "email")
-}, indexes = {
-    @Index(name = "idx_user_email", columnList = "email"),
-    @Index(name = "idx_user_role", columnList = "role")
-})
+@Table(name = "users")
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
-    @Size(max = 100)
     private String name;
-    @Column(unique = true)
-    @NotBlank
-    @Email
-    @Size(max = 255)
     private String email;
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    @NotBlank
-    @Size(min = 6, max = 255)
     private String password;
     private String role;
-    @Size(max = 2000)
     private String bio;
-    @Size(max = 2000)
     private String skills;
-    @Size(max = 255)
     private String location;
     private String profilePicture;
-    @Size(max = 500)
     private String resumeUrl;
-    @Size(max = 20)
     private String phone;
-    @Size(max = 500)
     private String linkedinUrl;
-    @Size(max = 500)
     private String githubUrl;
 
     public Long getId() { return id; }

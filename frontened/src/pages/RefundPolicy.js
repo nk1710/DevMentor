@@ -6,24 +6,19 @@ function RefundPolicy() {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white">
-
-      <nav className="flex justify-between items-center px-10 py-5 border-b border-slate-800">
-        <div onClick={() => navigate('/')}
-          className="text-2xl font-bold text-indigo-400 cursor-pointer">
-          Dev<span className="text-white">Mentor</span>
-        </div>
+      <div className="max-w-4xl mx-auto px-6 pt-6">
         <button onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-white transition">
+          className="text-slate-400 hover:text-white transition text-sm flex items-center gap-2">
           ← Back to Home
         </button>
-      </nav>
+      </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-12">
+      <div className="max-w-4xl mx-auto px-6 py-8">
         <h1 className="text-4xl font-bold mb-2">Refund Policy</h1>
         <p className="text-slate-400 mb-10">Last updated: April 1, 2026</p>
 
         {/* Quick Summary */}
-        <div className="grid grid-cols-3 gap-4 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
           {[
             { time: '24+ hours before', refund: '100% Refund', color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/30' },
             { time: '12-24 hours before', refund: '50% Refund', color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/30' },
@@ -102,10 +97,6 @@ function RefundPolicy() {
           </div>
         ))}
       </div>
-
-      <footer className="border-t border-slate-800 py-8 text-center text-slate-500">
-        © 2026 DevMentor. All rights reserved.
-      </footer>
     </div>
   );
 }

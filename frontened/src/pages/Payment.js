@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMentorById, getAvailableSlots, createOrder, verifyPayment } from '../services/api';
+import { getMentorById, getAvailableSlots, createPaymentOrder, verifyPaymentAndBook } from '../services/api';
 import { getCurrentUser } from '../utils/auth';
 
 function Payment() {
@@ -10,24 +10,23 @@ function Payment() {
 
   const [mentor, setMentor] = useState(null);
   const [slot, setSlot] = useState(null);
-  const [slotNotFound, setSlotNotFound] = useState(false);
   const [paying, setPaying] = useState(false);
-  const [error, setError] = useState('');
+  const razorpayKey = process.env.REACT_APP_RAZORPAY_KEY_ID;
 
   useEffect(() => {
-    getMentorById(mentorId).then(res => setMentor(res.data)).catch(() => setError('Failed to load mentor'));
+    getMentorById(mentorId).then(res => setMentor(res.data));
     getAvailableSlots(mentorId).then(res => {
-      const found = (res.data || []).find(s => String(s.id) === String(slotId));
-      if (found) {
-        setSlot(found);
-      } else {
-        setSlotNotFound(true);
-      }
-    }).catch(() => setError('Failed to load slot information'));
+      const found = res.data.find(s => s.id === parseInt(slotId));
+      setSlot(found);
+    });
   }, [mentorId, slotId]);
-   const loadRazorpay = () => {
+
+  const loadRazorpay = () => {
     return new Promise(resolve => {
-      if (window.Razorpay) { resolve(true); return; }
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => resolve(true);
@@ -38,58 +37,57 @@ function Payment() {
 
   const handlePayment = async () => {
     setPaying(true);
-    setError('');
-
     const loaded = await loadRazorpay();
+
     if (!loaded) {
-      setError('Payment gateway failed to load. Please try again.');
+      alert('Payment gateway failed to load');
       setPaying(false);
       return;
     }
 
     try {
-      const orderRes = await createOrder(mentorId, slotId);
-      const order = orderRes.data;
+      const orderRes = await createPaymentOrder(mentorId, slotId);
+      const { orderId, amount, keyId } = orderRes.data;
+      const key = keyId || razorpayKey;
 
-      if (!order.orderId || !order.keyId) {
-        setError('Invalid order response from server');
+      if (!key) {
+        alert('Payment key is not configured.');
         setPaying(false);
         return;
       }
 
       const options = {
-        key: order.keyId,
-        amount: order.amount,
-        currency: order.currency,
-        order_id: order.orderId,
+        key: key,
+        amount: amount,
+        currency: 'INR',
         name: 'DevMentor',
         description: `Session with ${mentor.name}`,
+        order_id: orderId || undefined,
         handler: async function (response) {
           try {
-            const verifyRes = await verifyPayment(
-              response.razorpay_order_id,
-              response.razorpay_payment_id,
-              response.razorpay_signature,
+            await verifyPaymentAndBook({
+              userId: user.id,
               mentorId,
-              slotId
-            );
+              slotId,
+              paymentId: response.razorpay_payment_id,
+              orderId: response.razorpay_order_id || orderId || '',
+              signature: response.razorpay_signature || ''
+            });
+
             navigate('/payment-success', {
               state: {
                 paymentId: response.razorpay_payment_id,
-                bookingId: verifyRes.data.bookingId,
-                amount: verifyRes.data.amount,
                 mentor: mentor,
                 slot: slot
               }
             });
           } catch (err) {
-            const msg = err.response?.data || err.message || 'Unknown error';
-            setError('Payment failed: ' + msg);
-            setPaying(false);
+            console.error('Payment verification error:', err);
+            alert('Payment verification failed: ' + (err.response?.data || err.message));
           }
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             setPaying(false);
           }
         },
@@ -104,29 +102,17 @@ function Payment() {
 
       const razor = new window.Razorpay(options);
       razor.on('payment.failed', function (response) {
-        setError('Payment failed: ' + (response.error.description || 'Unknown error'));
+        console.error('Razorpay payment failed:', response.error);
+        alert('Payment failed: ' + (response.error.description || response.error.reason || 'Payment could not be processed'));
         setPaying(false);
       });
       razor.open();
     } catch (err) {
-      setError(err.response?.data || 'Failed to create payment order');
+      console.error('Payment initiate error:', err);
+      alert('Could not start payment: ' + (err.response?.data || err.message));
       setPaying(false);
     }
   };
-
-  if (slotNotFound) return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-5xl mb-4">😔</div>
-        <h2 className="text-white text-2xl font-bold mb-2">Slot No Longer Available</h2>
-        <p className="text-slate-400 mb-6">This slot has already been booked or is no longer available.</p>
-        <button onClick={() => navigate(`/mentor/${mentorId}`)}
-          className="px-6 py-3 bg-indigo-600 rounded-xl hover:bg-indigo-700 transition font-semibold">
-          View Other Slots
-        </button>
-      </div>
-    </div>
-  );
 
   if (!mentor || !slot) return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
@@ -134,44 +120,22 @@ function Payment() {
     </div>
   );
 
-  const baseAmount = parseFloat(mentor.pricePerHour) || 0;
-  const gstAmount = Math.round(baseAmount * 0.18 * 100) / 100;
-  const totalAmount = baseAmount + gstAmount;
-
-  if (baseAmount <= 0) return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-5xl mb-4">⚠️</div>
-        <h2 className="text-white text-2xl font-bold mb-2">Price Not Set</h2>
-        <p className="text-slate-400 mb-6">This mentor hasn't set their session price yet.</p>
-        <button onClick={() => navigate(-1)}
-          className="px-6 py-3 bg-indigo-600 rounded-xl hover:bg-indigo-700 transition font-semibold">
-          Go Back
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-[#0f172a] text-white">
+      <div className="max-w-2xl mx-auto px-6 pt-6">
+        <button
+          onClick={() => navigate(`/mentor/${mentorId}`)}
+          className="text-slate-400 hover:text-white transition flex items-center gap-2 text-sm">
+          ← Back to Mentor Profile
+        </button>
+      </div>
 
-      <nav className="flex justify-between items-center px-10 py-5 border-b border-slate-800">
-        <div className="text-2xl font-bold text-indigo-400">
-          Dev<span className="text-white">Mentor</span>
-        </div>
-      </nav>
-
-      <div className="max-w-2xl mx-auto px-6 py-16">
+      <div className="max-w-2xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold mb-8 text-center">
-          Complete Booking
+          Complete Booking 💳
         </h1>
 
-        {error && (
-          <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm">
-            {error}
-          </div>
-        )}
-
+        {/* Order Summary */}
         <div className="bg-slate-800/50 rounded-2xl p-8 border border-slate-700 mb-6">
           <h2 className="text-xl font-semibold mb-6">Order Summary</h2>
 
@@ -187,46 +151,41 @@ function Payment() {
 
           <div className="space-y-3 mb-6">
             <div className="flex justify-between text-slate-300">
-              <span>Date</span>
+              <span>📅 Date</span>
               <span className="font-medium">{slot.date}</span>
             </div>
             <div className="flex justify-between text-slate-300">
-              <span>Time</span>
-              <span className="font-medium">{slot.startTime} - {slot.endTime}</span>
+              <span>⏰ Time</span>
+              <span className="font-medium">
+                {slot.startTime} - {slot.endTime}
+              </span>
             </div>
             <div className="flex justify-between text-slate-300">
-              <span>Experience</span>
+              <span>💼 Experience</span>
               <span className="font-medium">{mentor.experience}</span>
             </div>
           </div>
 
-          <div className="border-t border-slate-700 pt-4 space-y-2">
-            <div className="flex justify-between text-slate-400">
-              <span>Session Fee</span>
-              <span>₹{baseAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-slate-400">
-              <span>GST (18%)</span>
-              <span>₹{gstAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center pt-2 border-t border-slate-700">
-              <span className="text-xl font-bold">Total</span>
+          <div className="border-t border-slate-700 pt-4">
+            <div className="flex justify-between items-center">
+              <span className="text-xl font-bold">Total Amount</span>
               <span className="text-2xl font-bold text-indigo-400">
-                ₹{totalAmount.toFixed(2)}
+                ₹{mentor.pricePerHour}
               </span>
             </div>
           </div>
         </div>
 
+        {/* Payment Button */}
         <button
           onClick={handlePayment}
           disabled={paying}
           className="w-full py-5 bg-indigo-600 rounded-2xl text-xl font-bold hover:bg-indigo-700 transition disabled:opacity-50">
-          {paying ? 'Processing...' : `Pay ₹${totalAmount.toFixed(2)} & Book`}
+          {paying ? 'Processing...' : `Pay ₹${mentor.pricePerHour} & Book`}
         </button>
 
         <p className="text-center text-slate-500 text-sm mt-4">
-          Secure payment powered by Razorpay
+          🔒 Secure payment powered by Razorpay
         </p>
       </div>
     </div>

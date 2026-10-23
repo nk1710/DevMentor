@@ -1,5 +1,6 @@
 export const isLoggedIn = () => {
-    return localStorage.getItem('user') !== null;
+    return localStorage.getItem('user') !== null &&
+           localStorage.getItem('token') !== null;
 };
 
 export const getCurrentUser = () => {
@@ -8,20 +9,19 @@ export const getCurrentUser = () => {
         return user ? JSON.parse(user) : null;
     } catch {
         localStorage.removeItem('user');
+        localStorage.removeItem('token');
         return null;
-    }
-};
-
-export const saveAuth = (userData) => {
-    const { token, ...user } = userData;
-    localStorage.setItem('user', JSON.stringify(user));
-    if (token) {
-        localStorage.setItem('token', token);
     }
 };
 
 export const getToken = () => {
     return localStorage.getItem('token');
+};
+
+export const saveAuth = (userData) => {
+    const { token, ...user } = userData;
+    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('token', token);
 };
 
 export const logout = () => {

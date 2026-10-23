@@ -1,41 +1,23 @@
 package com.example.demo.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
-@Table(name = "colleges", uniqueConstraints = {
-    @UniqueConstraint(columnNames = "email")
-}, indexes = {
-    @Index(name = "idx_college_email", columnList = "email"),
-    @Index(name = "idx_college_plan", columnList = "plan")
-})
+@Table(name = "colleges")
 public class College {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
-    @Size(max = 200)
     private String name;
-    @Column(unique = true)
-    @NotBlank
-    @Email
-    @Size(max = 255)
     private String email;
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    @NotBlank
-    @Size(min = 6, max = 255)
     private String password;
-    @Size(max = 20)
     private String phone;
-    @Size(max = 500)
     private String address;
-    @Size(max = 100)
     private String city;
-    @Size(max = 100)
     private String contactPerson;
     private String plan;
     private Boolean isActive;

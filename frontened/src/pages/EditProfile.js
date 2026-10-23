@@ -36,11 +36,11 @@ function EditProfile() {
         githubUrl: d.githubUrl || '',
         skills: d.skills || '',
         designation: d.designation || '',
-        pricePerHour: d.pricePerHour ?? '',
-        pricePerMinute: d.pricePerMinute ?? '',
+        pricePerHour: d.pricePerHour || '',
+        pricePerMinute: d.pricePerMinute || '',
         experience: d.experience || ''
       });
-    }).catch(() => {});
+    });
   }, [isMentorRole, navigate, user]);
 
   const handleChange = (e) => {
@@ -82,21 +82,15 @@ function EditProfile() {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white">
-
-      {/* Navbar */}
-      <nav className="flex justify-between items-center px-10 py-5 border-b border-slate-800">
-        <div onClick={() => navigate('/')}
-          className="text-2xl font-bold text-indigo-400 cursor-pointer">
-          Dev<span className="text-white">Mentor</span>
-        </div>
+      <div className="max-w-3xl mx-auto px-6 pt-6">
         <button
           onClick={() => navigate(isMentorRole ? '/mentor-dashboard' : '/user-dashboard')}
-          className="text-slate-300 hover:text-white">
+          className="text-slate-300 hover:text-white transition flex items-center gap-2 text-sm">
           ← Back to Dashboard
         </button>
-      </nav>
+      </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-6 py-8">
         <h1 className="text-3xl font-bold mb-2">Edit Profile ✏️</h1>
         <p className="text-slate-400 mb-8">
           Your profile is visible to everyone on the platform
@@ -108,88 +102,97 @@ function EditProfile() {
           <div>
             <label className="text-slate-400 text-sm mb-2 block">Bio</label>
             <textarea
-              name="bio" value={form.bio} onChange={handleChange}
-              placeholder="Tell others about yourself..."
-              rows={4}
+              name="bio" value={form.bio}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Tell us about yourself..."
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-slate-400 text-sm mb-2 block">Location</label>
               <input
-                name="location" value={form.location} onChange={handleChange}
-                placeholder="Delhi, India"
+                name="location" value={form.location}
+                onChange={handleChange}
+                placeholder="e.g. Bangalore, India"
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div>
               <label className="text-slate-400 text-sm mb-2 block">Phone</label>
               <input
-                name="phone" value={form.phone} onChange={handleChange}
-                placeholder="+91 9999999999"
+                name="phone" value={form.phone}
+                onChange={handleChange}
+                placeholder="+91 9876543210"
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               />
             </div>
           </div>
 
-          <div>
-            <label className="text-slate-400 text-sm mb-2 block">Skills</label>
-            <input
-              name="skills" value={form.skills} onChange={handleChange}
-              placeholder="Java, React, DSA, System Design"
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          {/* Mentor Only Fields */}
+          {/* Mentor Specific Fields */}
           {isMentorRole && (
             <>
-              <div>
-                <label className="text-slate-400 text-sm mb-2 block">
-                  Designation
-                </label>
-                <input
-                  name="designation" value={form.designation}
-                  onChange={handleChange}
-                  placeholder="Senior Developer at Google"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 text-sm mb-2 block">
-                  Experience
-                </label>
-                <input
-                  name="experience" value={form.experience}
-                  onChange={handleChange}
-                  placeholder="3 years"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-slate-400 text-sm mb-2 block">
-                    Price per Hour (₹)
+                    Designation
                   </label>
                   <input
-                    type="number" step="0.01" min="0"
-                    name="pricePerHour" value={form.pricePerHour}
-                    onChange={handleChange} placeholder="500"
+                    name="designation" value={form.designation}
+                    onChange={handleChange}
+                    placeholder="e.g. Senior Software Engineer at Google"
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
                 <div>
                   <label className="text-slate-400 text-sm mb-2 block">
-                    Price per Minute (₹)
+                    Experience
                   </label>
                   <input
-                    type="number" step="0.01" min="0"
-                    name="pricePerMinute" value={form.pricePerMinute}
-                    onChange={handleChange} placeholder="10"
+                    name="experience" value={form.experience}
+                    onChange={handleChange}
+                    placeholder="e.g. 5+ Years"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-400 text-sm mb-2 block">
+                  Skills (comma separated)
+                </label>
+                <input
+                  name="skills" value={form.skills}
+                  onChange={handleChange}
+                  placeholder="React, Node.js, System Design, Python"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-slate-400 text-sm mb-2 block">
+                    Price Per Hour (₹)
+                  </label>
+                  <input
+                    name="pricePerHour" type="number"
+                    value={form.pricePerHour}
+                    onChange={handleChange}
+                    placeholder="e.g. 500"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 text-sm mb-2 block">
+                    Price Per Minute (₹)
+                  </label>
+                  <input
+                    name="pricePerMinute" type="number"
+                    value={form.pricePerMinute}
+                    onChange={handleChange}
+                    placeholder="e.g. 10"
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -198,7 +201,7 @@ function EditProfile() {
           )}
 
           {/* Social Links */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-slate-400 text-sm mb-2 block">
                 LinkedIn URL

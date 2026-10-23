@@ -8,10 +8,10 @@ function ContactUs() {
 
   const handleSubmit = () => {
     if (!form.name || !form.email || !form.message) {
-      alert('Sab fields bharo!');
+      alert('Please fill in all fields!');
       return;
     }
-    // Future me email API lagayenge
+    // Future integration with email API
     setSubmitted(true);
   };
 
@@ -147,7 +147,7 @@ function ContactUs() {
                 </label>
                 <textarea
                   rows={5}
-                  placeholder="Apna message yahan likhein..."
+                  placeholder="Write your message here..."
                   value={form.message}
                   onChange={e => setForm({...form, message: e.target.value})}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"

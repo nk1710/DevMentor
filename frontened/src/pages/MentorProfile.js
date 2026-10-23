@@ -1,28 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMentorById, getAvailableSlots } from '../services/api';
+import { getMentorById, getAvailableSlots, getFileUrl } from '../services/api';
 import { isLoggedIn } from '../utils/auth';
-
-const safeUrl = (url) => {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? url : null;
-  } catch {
-    return null;
-  }
-};
 
 function MentorProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [mentor, setMentor] = useState(null);
   const [slots, setSlots] = useState([]);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    getMentorById(id).then(res => setMentor(res.data)).catch(() => setError('Failed to load mentor profile'));
-    getAvailableSlots(id).then(res => setSlots(res.data || [])).catch(() => setError('Failed to load slots'));
+    getMentorById(id).then(res => setMentor(res.data));
+    getAvailableSlots(id).then(res => setSlots(res.data));
   }, [id]);
 
   const handleBookNow = (slotId) => {
@@ -33,20 +22,6 @@ function MentorProfile() {
     navigate(`/payment/${slotId}/${id}`);
   };
 
-  if (error) return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-5xl mb-4">⚠️</div>
-        <h2 className="text-white text-2xl font-bold mb-2">Error</h2>
-        <p className="text-slate-400 mb-6">{error}</p>
-        <button onClick={() => navigate('/mentors')}
-          className="px-6 py-3 bg-indigo-600 rounded-xl hover:bg-indigo-700 transition font-semibold">
-          Back to Mentors
-        </button>
-      </div>
-    </div>
-  );
-
   if (!mentor) return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
       <div className="text-white text-xl">Loading...</div>
@@ -55,29 +30,31 @@ function MentorProfile() {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white">
-
-      {/* Navbar */}
-      <nav className="flex justify-between items-center px-10 py-5 border-b border-slate-800">
-        <div onClick={() => navigate('/')}
-          className="text-2xl font-bold text-indigo-400 cursor-pointer">
-          Dev<span className="text-white">Mentor</span>
-        </div>
+      <div className="max-w-5xl mx-auto px-6 pt-6">
         <button onClick={() => navigate('/mentors')}
-          className="text-slate-300 hover:text-white">
+          className="text-slate-300 hover:text-white transition flex items-center gap-2 text-sm">
           ← Back to Mentors
         </button>
-      </nav>
+      </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-12">
+      <div className="max-w-5xl mx-auto px-6 py-8">
 
         {/* Profile Header */}
         <div className="bg-slate-800/50 rounded-2xl p-8 border border-slate-700 mb-8">
           <div className="flex flex-col md:flex-row gap-8 items-start">
 
             {/* Avatar */}
-            <div className="w-28 h-28 rounded-2xl bg-indigo-600 flex items-center justify-center text-4xl font-bold flex-shrink-0">
-              {mentor.name?.charAt(0).toUpperCase()}
-            </div>
+            {mentor.profilePicture ? (
+              <img
+                src={getFileUrl(mentor.profilePicture)}
+                alt={mentor.name}
+                className="w-28 h-28 rounded-2xl object-cover border border-indigo-500/30 flex-shrink-0"
+              />
+            ) : (
+              <div className="w-28 h-28 rounded-2xl bg-indigo-600 flex items-center justify-center text-4xl font-bold flex-shrink-0">
+                {mentor.name?.charAt(0).toUpperCase()}
+              </div>
+            )}
 
             {/* Info */}
             <div className="flex-1">
@@ -94,7 +71,7 @@ function MentorProfile() {
 
               {/* Skills */}
               <div className="flex flex-wrap gap-2 mb-4">
-                {(mentor.skills?.split(',') ?? []).map((skill, i) => (
+                {mentor.skills?.split(',').map((skill, i) => (
                   <span key={i}
                     className="bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full text-sm">
                     {skill.trim()}
@@ -104,22 +81,22 @@ function MentorProfile() {
 
               {/* Links */}
               <div className="flex gap-4">
-                {safeUrl(mentor.linkedinUrl) && (
-                  <a href={safeUrl(mentor.linkedinUrl)} target="_blank" rel="noreferrer"
+                {mentor.linkedinUrl && (
+                  <a href={mentor.linkedinUrl} target="_blank" rel="noreferrer"
                     className="text-blue-400 hover:underline text-sm">
-                    LinkedIn
+                    🔗 LinkedIn
                   </a>
                 )}
-                {safeUrl(mentor.githubUrl) && (
-                  <a href={safeUrl(mentor.githubUrl)} target="_blank" rel="noreferrer"
+                {mentor.githubUrl && (
+                  <a href={mentor.githubUrl} target="_blank" rel="noreferrer"
                     className="text-slate-400 hover:underline text-sm">
-                    GitHub
+                    🐙 GitHub
                   </a>
                 )}
-                {safeUrl(mentor.resumeUrl) && (
-                  <a href={safeUrl(mentor.resumeUrl)} target="_blank" rel="noreferrer"
+                {mentor.resumeUrl && (
+                  <a href={getFileUrl(mentor.resumeUrl)} target="_blank" rel="noreferrer"
                     className="text-green-400 hover:underline text-sm">
-                    Resume
+                    📄 Resume
                   </a>
                 )}
               </div>
@@ -129,7 +106,7 @@ function MentorProfile() {
             <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700 min-w-[200px]">
               <div className="text-center mb-4">
                 <div className="text-3xl font-bold text-indigo-400">
-                  ₹{mentor.pricePerHour || 'Not set'}
+                  ₹{mentor.pricePerHour}
                 </div>
                 <div className="text-slate-400 text-sm">per hour</div>
                 {mentor.pricePerMinute && (
@@ -142,7 +119,7 @@ function MentorProfile() {
                 )}
               </div>
               <div className="text-center mb-4">
-                <span className="text-yellow-400 text-lg">⭐ {mentor.rating}</span>
+                <span className="text-yellow-400 text-lg">⭐ {mentor.rating || 5.0}</span>
               </div>
               <div className="text-center text-slate-400 text-sm">
                 💼 {mentor.experience} experience

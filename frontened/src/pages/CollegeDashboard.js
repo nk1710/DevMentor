@@ -46,7 +46,7 @@ function CollegeDashboard() {
                 getAllMentors()
             ]);
             setCollege(c.data);
-            setSessions(s.data || []);
+            setSessions(s.data);
             setMentors(m.data);
         } catch (err) {
             console.error(err);
@@ -61,7 +61,7 @@ function CollegeDashboard() {
     const handleBookSession = async () => {
         if (!bookForm.mentorId || !bookForm.topic
             || !bookForm.scheduledDate) {
-            alert('Sab fields bharo!');
+            alert('Please fill in all fields!');
             return;
         }
         try {
@@ -73,7 +73,7 @@ function CollegeDashboard() {
                     scheduledDate: bookForm.scheduledDate,
                     scheduledTime: bookForm.scheduledTime,
                     sessionType: bookForm.sessionType,
-                    maxStudents: parseInt(bookForm.maxStudents, 10) || 0
+                    maxStudents: parseInt(bookForm.maxStudents)
                 }
             );
             alert('Session booked! ✅');
@@ -87,7 +87,7 @@ function CollegeDashboard() {
     const handleAddQuestions = async () => {
         if (!questionsForm.sessionId
             || !questionsForm.questions) {
-            alert('Session select karo aur questions likho!');
+            alert('Please select a session and enter the questions!');
             return;
         }
         try {
@@ -415,7 +415,7 @@ function CollegeDashboard() {
                             Upload Questions ❓
                         </h1>
                         <p className="text-slate-400 mb-8">
-                            Students ke questions mentor ko pehle bhejo
+                            Send student questions to mentor in advance
                         </p>
 
                         <div className="bg-slate-800/50 rounded-2xl p-8 border border-slate-700 max-w-2xl space-y-4">
@@ -438,7 +438,7 @@ function CollegeDashboard() {
 
                             <div>
                                 <label className="text-slate-400 text-sm mb-2 block">
-                                    Questions (ek line me ek question)
+                                    Questions (one question per line)
                                 </label>
                                 <textarea
                                     rows={8}
@@ -552,7 +552,7 @@ function CollegeDashboard() {
 
                         <div className="mt-8 bg-slate-800/50 rounded-2xl p-6 border border-slate-700 text-center">
                             <p className="text-slate-300 mb-2">
-                                Upgrade ke liye contact karo:
+                                For upgrade inquiries, please contact:
                             </p>
                             <p className="text-indigo-400 font-semibold text-lg">
                                 colleges@devmentor.in

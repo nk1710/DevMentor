@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { isAdmin, isLoggedIn } from '../utils/auth';
 
 function ProtectedRoute({ children, adminOnly = false }) {
-    // Login nahi hai
+    // User is not logged in
     if (!isLoggedIn()) {
         return <Navigate to="/login" replace />;
     }

@@ -1,17 +1,13 @@
 package com.example.demo.service;
 
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Safelist;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.entity.Mentor;
 import com.example.demo.repository.MentorRepository;
 import java.util.List;
 
 @Service
-@Transactional
 public class MentorService {
 
     @Autowired
@@ -20,26 +16,34 @@ public class MentorService {
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     public Mentor registerMentor(Mentor mentor) {
-        if (mentor.getPassword() == null || mentor.getPassword().length() < 6) {
-            throw new IllegalArgumentException("Password must be at least 6 characters");
+        if (mentor.getEmail() == null || mentor.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
         }
-        if (mentor.getEmail() == null || !mentor.getEmail().matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
-            throw new IllegalArgumentException("Invalid email format");
+        if (mentorRepository.findByEmail(mentor.getEmail().trim()) != null) {
+            throw new IllegalArgumentException("Email already registered: " + mentor.getEmail());
         }
-        if (mentorRepository.findByEmail(mentor.getEmail()) != null) {
-            throw new IllegalArgumentException("Email already registered");
-        }
-        mentor.setPassword(encoder.encode(mentor.getPassword()));
         mentor.setRole("MENTOR");
+        mentor.setEmail(mentor.getEmail().trim().toLowerCase());
+        mentor.setPassword(encoder.encode(mentor.getPassword()));
         return mentorRepository.save(mentor);
     }
 
     public Mentor login(String email, String password) {
         if (email == null || password == null) return null;
-        Mentor mentor = mentorRepository.findByEmail(email);
+        Mentor mentor = mentorRepository.findByEmail(email.trim().toLowerCase());
+
         if (mentor == null) return null;
-        if (encoder.matches(password, mentor.getPassword())) {
-            return mentor;
+
+        // Encrypted password check
+        try {
+            if (encoder.matches(password, mentor.getPassword())) {
+                return mentor;
+            }
+        } catch (Exception e) {
+            // Plain text check (purana data fallback)
+            if (mentor.getPassword().equals(password)) {
+                return mentor;
+            }
         }
         return null;
     }
@@ -49,9 +53,6 @@ public class MentorService {
     }
 
     public List<Mentor> getMentorsBySkill(String skill) {
-        if (skill == null || skill.trim().isEmpty()) {
-            return mentorRepository.findAll();
-        }
         return mentorRepository.findBySkillsContaining(skill);
     }
 
@@ -63,28 +64,32 @@ public class MentorService {
         Mentor mentor = mentorRepository.findById(id).orElse(null);
         if (mentor == null) return null;
 
+        if (updatedMentor.getName() != null)
+            mentor.setName(updatedMentor.getName());
         if (updatedMentor.getBio() != null)
-            mentor.setBio(Jsoup.clean(updatedMentor.getBio(), Safelist.none()));
+            mentor.setBio(updatedMentor.getBio());
         if (updatedMentor.getDesignation() != null)
-            mentor.setDesignation(Jsoup.clean(updatedMentor.getDesignation(), Safelist.none()));
+            mentor.setDesignation(updatedMentor.getDesignation());
         if (updatedMentor.getLocation() != null)
-            mentor.setLocation(Jsoup.clean(updatedMentor.getLocation(), Safelist.none()));
+            mentor.setLocation(updatedMentor.getLocation());
         if (updatedMentor.getPhone() != null)
-            mentor.setPhone(Jsoup.clean(updatedMentor.getPhone(), Safelist.none()));
+            mentor.setPhone(updatedMentor.getPhone());
         if (updatedMentor.getLinkedinUrl() != null)
-            mentor.setLinkedinUrl(Jsoup.clean(updatedMentor.getLinkedinUrl(), Safelist.none()));
+            mentor.setLinkedinUrl(updatedMentor.getLinkedinUrl());
         if (updatedMentor.getGithubUrl() != null)
-            mentor.setGithubUrl(Jsoup.clean(updatedMentor.getGithubUrl(), Safelist.none()));
+            mentor.setGithubUrl(updatedMentor.getGithubUrl());
         if (updatedMentor.getResumeUrl() != null)
-            mentor.setResumeUrl(Jsoup.clean(updatedMentor.getResumeUrl(), Safelist.none()));
+            mentor.setResumeUrl(updatedMentor.getResumeUrl());
+        if (updatedMentor.getProfilePicture() != null)
+            mentor.setProfilePicture(updatedMentor.getProfilePicture());
         if (updatedMentor.getPricePerMinute() != null)
             mentor.setPricePerMinute(updatedMentor.getPricePerMinute());
         if (updatedMentor.getIsAvailable() != null)
             mentor.setIsAvailable(updatedMentor.getIsAvailable());
         if (updatedMentor.getSkills() != null)
-            mentor.setSkills(Jsoup.clean(updatedMentor.getSkills(), Safelist.none()));
+            mentor.setSkills(updatedMentor.getSkills());
         if (updatedMentor.getExperience() != null)
-            mentor.setExperience(Jsoup.clean(updatedMentor.getExperience(), Safelist.none()));
+            mentor.setExperience(updatedMentor.getExperience());
         if (updatedMentor.getPricePerHour() != null)
             mentor.setPricePerHour(updatedMentor.getPricePerHour());
 
@@ -92,6 +97,6 @@ public class MentorService {
     }
 
     public void deleteMentor(Long id) {
-        mentorRepository.findById(id).ifPresent(m -> mentorRepository.delete(m));
+        mentorRepository.deleteById(id);
     }
 }

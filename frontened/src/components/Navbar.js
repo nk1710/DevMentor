@@ -87,7 +87,7 @@ function Navbar() {
                                     </p>
                                 </div>
                                 <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-sm font-bold">
-                                    {user?.name?.charAt(0)?.toUpperCase() || '?'}
+                                    {user?.name?.charAt(0).toUpperCase()}
                                 </div>
                             </div>
 

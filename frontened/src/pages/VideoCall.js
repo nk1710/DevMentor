@@ -2,12 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import AgoraRTC from 'agora-rtc-sdk-ng';
 import { getCurrentUser } from '../utils/auth';
-import { getAgoraToken } from '../services/agoraService';
+import { getAgoraToken } from '../services/api';
 
-const APP_ID = process.env.REACT_APP_AGORA_APP_ID;
-if (!APP_ID) {
-  console.error('REACT_APP_AGORA_APP_ID is not configured');
-}
+// Agora App ID configured for project
+const APP_ID = process.env.REACT_APP_AGORA_APP_ID || '745dbc4d909e4d6893d1dc7c39d4ad83';
 
 function VideoCall() {
   const { roomId } = useParams();
@@ -26,87 +24,117 @@ function VideoCall() {
   const localVideoRef = useRef(null);
   const localTracksRef = useRef([]);
   const timerRef = useRef(null);
+  const isJoiningRef = useRef(false);
 
   const PRICE_PER_MINUTE = 10;
 
-  const joinCall = useCallback(async () => {
-    try {
-      setStatus('Creating client...');
-      clientRef.current = AgoraRTC.createClient({
-        mode: 'rtc',
-        codec: 'vp8'
-      });
-
-      clientRef.current.on('user-published', async (remoteUser, mediaType) => {
-        await clientRef.current.subscribe(remoteUser, mediaType);
-        if (mediaType === 'video') {
-          setRemoteUsers(prev => {
-            const exists = prev.find(u => u.uid === remoteUser.uid);
-            if (!exists) return [...prev, remoteUser];
-            return prev;
-          });
-          setTimeout(() => {
-            remoteUser.videoTrack?.play(`remote-${remoteUser.uid}`);
-          }, 500);
-        }
-        if (mediaType === 'audio') {
-          remoteUser.audioTrack?.play();
-        }
-      });
-
-      clientRef.current.on('user-unpublished', (remoteUser) => {
-        setRemoteUsers(prev =>
-          prev.filter(u => u.uid !== remoteUser.uid)
-        );
-      });
-
-      const uid = user?.id || Math.floor(Math.random() * 10000);
-      let joinToken = null;
-
+  const leaveCall = useCallback(async () => {
+    clearInterval(timerRef.current);
+    localTracksRef.current.forEach(track => {
       try {
-        const tokenResponse = await getAgoraToken(roomId, uid);
-        joinToken = tokenResponse.data?.token || null;
-      } catch (e) {
-        if (!APP_ID) {
-          setError('Agora App ID not configured. Set REACT_APP_AGORA_APP_ID in environment.');
-          setStatus('Failed ❌');
-          return;
+        track?.stop();
+        track?.close();
+      } catch (e) {}
+    });
+    localTracksRef.current = [];
+
+    if (clientRef.current) {
+      try {
+        if (clientRef.current.connectionState !== 'DISCONNECTED') {
+          await clientRef.current.leave();
         }
+      } catch (e) {
+        console.warn('Agora leave error:', e);
+      }
+    }
+    setJoined(false);
+  }, []);
+
+  const joinCall = useCallback(async () => {
+    if (isJoiningRef.current) return;
+    if (clientRef.current && (clientRef.current.connectionState === 'CONNECTING' || clientRef.current.connectionState === 'CONNECTED')) {
+      return;
+    }
+    isJoiningRef.current = true;
+
+    try {
+      if (!clientRef.current) {
+        setStatus('Creating client...');
+        clientRef.current = AgoraRTC.createClient({
+          mode: 'rtc',
+          codec: 'vp8'
+        });
+
+        clientRef.current.on('user-published', async (remoteUser, mediaType) => {
+          await clientRef.current.subscribe(remoteUser, mediaType);
+          if (mediaType === 'video') {
+            setRemoteUsers(prev => {
+              const exists = prev.find(u => u.uid === remoteUser.uid);
+              if (!exists) return [...prev, remoteUser];
+              return prev;
+            });
+            setTimeout(() => {
+              remoteUser.videoTrack?.play(`remote-${remoteUser.uid}`);
+            }, 500);
+          }
+          if (mediaType === 'audio') {
+            remoteUser.audioTrack?.play();
+          }
+        });
+
+        clientRef.current.on('user-unpublished', (remoteUser) => {
+          setRemoteUsers(prev =>
+            prev.filter(u => u.uid !== remoteUser.uid)
+          );
+        });
       }
 
-      if (!APP_ID) {
-        setError('Agora App ID not configured. Set REACT_APP_AGORA_APP_ID in environment.');
-        setStatus('Failed ❌');
-        return;
+      const numericUid = Number(user?.id) > 0 ? Number(user?.id) : Math.floor(Math.random() * 100000) + 1;
+
+      setStatus('Generating token...');
+      let token = null;
+      let effectiveAppId = APP_ID;
+      try {
+        const tokenRes = await getAgoraToken(roomId, numericUid);
+        token = tokenRes.data?.token || null;
+        if (tokenRes.data?.appId) {
+          effectiveAppId = tokenRes.data.appId;
+        }
+      } catch (e) {
+        console.warn('Agora token warning:', e);
       }
 
-      setStatus('Joining channel...');
-      await clientRef.current.join(
-        APP_ID,
-        roomId,
-        joinToken,
-        uid
-      );
+      if (clientRef.current.connectionState !== 'CONNECTED' && clientRef.current.connectionState !== 'CONNECTING') {
+        setStatus('Joining channel...');
+        await clientRef.current.join(
+          effectiveAppId,
+          roomId,
+          token,
+          numericUid
+        );
+      }
 
       setStatus('Getting camera/mic...');
+      // Clean up any stale tracks first
+      localTracksRef.current.forEach(t => {
+        try { t?.stop(); t?.close(); } catch (e) {}
+      });
+      localTracksRef.current = [];
+
       let micTrack = null;
       let camTrack = null;
-      let camFailed = false, micFailed = false;
 
       try {
         micTrack = await AgoraRTC.createMicrophoneAudioTrack();
-      } catch (e) { micFailed = true; }
+      } catch (e) {
+        setError('⚠️ Microphone access denied');
+      }
 
       try {
         camTrack = await AgoraRTC.createCameraVideoTrack();
-      } catch (e) { camFailed = true; }
-
-      if (micFailed && camFailed)
-        setError('⚠️ Microphone and camera access denied');
-      else if (micFailed)
-        setError('⚠️ Microphone access denied');
-      else if (camFailed)
+      } catch (e) {
         setError('⚠️ Camera access denied');
+      }
 
       const tracks = [micTrack, camTrack].filter(Boolean);
       localTracksRef.current = tracks;
@@ -115,36 +143,32 @@ function VideoCall() {
         camTrack.play(localVideoRef.current);
       }
 
-      if (tracks.length > 0) {
+      if (tracks.length > 0 && clientRef.current?.connectionState === 'CONNECTED') {
         await clientRef.current.publish(tracks);
       }
 
       setJoined(true);
       setStatus('Connected ✅');
 
+      clearInterval(timerRef.current);
       timerRef.current = setInterval(() => {
         setDuration(prev => prev + 1);
       }, 1000);
 
     } catch (err) {
-      setError('Connection failed. Please try again.');
+      if (err?.message?.includes('already in connecting/connected') || err?.code === 'INVALID_OPERATION') {
+        // Harmless StrictMode / duplicate trigger - ignore and keep active state
+        setJoined(true);
+        setStatus('Connected ✅');
+        return;
+      }
+      console.error('Full error:', err);
+      setError(`Error: ${err.message}`);
       setStatus('Failed ❌');
+    } finally {
+      isJoiningRef.current = false;
     }
   }, [roomId, user?.id]);
-
-  const leaveCall = useCallback(async () => {
-    clearInterval(timerRef.current);
-    localTracksRef.current.forEach(track => {
-      track?.stop();
-      track?.close();
-    });
-    localTracksRef.current = [];
-    if (clientRef.current && joined) {
-      try {
-        await clientRef.current.leave();
-      } catch {}
-    }
-  }, [joined]);
 
   const handleLeave = async () => {
     await leaveCall();
@@ -156,7 +180,9 @@ function VideoCall() {
 
   useEffect(() => {
     joinCall();
-    return () => { leaveCall(); };
+    return () => {
+      leaveCall();
+    };
   }, [joinCall, leaveCall]);
 
   const toggleMic = () => {
@@ -239,8 +265,11 @@ function VideoCall() {
                   Waiting for other person...
                 </p>
                 <p className="text-slate-500 text-sm mt-2">
-                  Share this link with the other person
+                  Share this link with them to join
                 </p>
+                <div className="mt-4 bg-slate-900 px-4 py-2 rounded-lg text-xs text-slate-400 font-mono break-all max-w-sm">
+                  {window.location.href}
+                </div>
               </div>
             </div>
           ) : (

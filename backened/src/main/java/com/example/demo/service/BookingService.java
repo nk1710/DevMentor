@@ -1,15 +1,14 @@
 package com.example.demo.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.entity.*;
 import com.example.demo.repository.*;
 import java.util.List;
-import java.util.UUID;
 
 @Service
+@Transactional
 public class BookingService {
 
     @Autowired
@@ -24,45 +23,35 @@ public class BookingService {
     @Autowired
     private MentorRepository mentorRepository;
 
-    @Autowired
-    private CollegeSessionRepository collegeSessionRepository;
+    public synchronized Booking createBooking(Long userId, Long mentorId, Long slotId) {
+        System.out.println("=== Creating booking ===");
+        System.out.println("userId=" + userId + " mentorId=" + mentorId + " slotId=" + slotId);
 
-    @Transactional
-    public Booking createBooking(Long userId, Long mentorId, Long slotId) {
         User user = userRepository.findById(userId).orElse(null);
         Mentor mentor = mentorRepository.findById(mentorId).orElse(null);
         Slot slot = slotRepository.findById(slotId).orElse(null);
 
-        if (user == null) throw new IllegalArgumentException("User not found");
-        if (mentor == null) throw new IllegalArgumentException("Mentor not found");
-        if (slot == null) throw new IllegalArgumentException("Slot not found");
-        if (slot.isBooked()) throw new IllegalArgumentException("Slot already booked");
-        if (!slot.getMentor().getId().equals(mentorId)) {
-            throw new IllegalArgumentException("Slot does not belong to this mentor");
-        }
+        if (user == null) { System.out.println("USER NOT FOUND"); return null; }
+        if (mentor == null) { System.out.println("MENTOR NOT FOUND"); return null; }
+        if (slot == null) { System.out.println("SLOT NOT FOUND"); return null; }
+        if (slot.isBooked()) { System.out.println("SLOT ALREADY BOOKED"); return null; }
 
-        try {
-            slot.setBooked(true);
-            slotRepository.save(slot);
-        } catch (ObjectOptimisticLockingFailureException e) {
-            throw new IllegalStateException("Slot was just booked by someone else");
-        }
+        // Book slot
+        slot.setBooked(true);
+        slotRepository.save(slot);
 
+        // Booking banao
         Booking booking = new Booking();
         booking.setUser(user);
         booking.setMentor(mentor);
         booking.setSlot(slot);
         booking.setStatus("CONFIRMED");
-        booking.setRoomId("dm-" + UUID.randomUUID().toString().substring(0, 12));
+        booking.setRoomId("devmentor-" + userId + "-" + mentorId + "-" + slotId + "-" + System.currentTimeMillis());
 
         Booking saved = bookingRepository.save(booking);
-
-        mentor.setTotalSessions(
-            (mentor.getTotalSessions() == null ? 0 : mentor.getTotalSessions()) + 1
-        );
-        mentorRepository.save(mentor);
-
-        return bookingRepository.findById(saved.getId()).orElse(saved);
+        System.out.println("=== Booking saved id=" + saved.getId() +
+            " roomId=" + saved.getRoomId());
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -80,7 +69,6 @@ public class BookingService {
         return bookingRepository.findAll();
     }
 
-    @Transactional
     public Booking updateStatus(Long bookingId, String status) {
         Booking booking = bookingRepository.findById(bookingId).orElse(null);
         if (booking == null) return null;

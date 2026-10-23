@@ -13,20 +13,16 @@ function MentorList() {
     getAllMentors().then(res => {
       setMentors(res.data);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    });
   }, []);
 
   const handleSearch = async () => {
     if (!skill.trim()) {
-              getAllMentors().then(res => setMentors(res.data)).catch(() => setMentors([]));
+      getAllMentors().then(res => setMentors(res.data));
       return;
     }
-    try {
-      const res = await searchMentorBySkill(skill);
-      setMentors(res.data || []);
-    } catch {
-      setMentors([]);
-    }
+    const res = await searchMentorBySkill(skill);
+    setMentors(res.data);
   };
 
   const handleViewProfile = (mentorId) => {
@@ -97,7 +93,7 @@ function MentorList() {
           <button
             onClick={() => {
               setSkill('');
-      getAllMentors().then(res => setMentors(res.data)).catch(() => setMentors([]));
+              getAllMentors().then(res => setMentors(res.data));
             }}
             className="px-6 py-3 border border-slate-700 rounded-xl hover:border-indigo-500 transition">
             Reset
@@ -134,7 +130,7 @@ function MentorList() {
 
                 {/* Skills */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {(mentor.skills?.split(',') ?? []).slice(0, 3).map((skill, i) => (
+                  {mentor.skills?.split(',').slice(0, 3).map((skill, i) => (
                     <span key={i}
                       className="bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-full text-xs">
                       {skill.trim()}

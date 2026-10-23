@@ -1,5 +1,9 @@
 package com.example.demo.controller;
 
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,25 +29,6 @@ public class FileUploadController {
             "image/png",
             "image/webp"
     );
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "jpg", "jpeg", "png", "webp");
-
-    private boolean validateMagicBytes(byte[] bytes, String contentType) {
-        if (bytes.length < 4) return false;
-        if ("application/pdf".equals(contentType)) {
-            return bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46;
-        }
-        if ("image/jpeg".equals(contentType)) {
-            return bytes[0] == (byte) 0xFF && bytes[1] == (byte) 0xD8 && bytes[2] == (byte) 0xFF;
-        }
-        if ("image/png".equals(contentType)) {
-            return bytes[0] == (byte) 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47;
-        }
-        if ("image/webp".equals(contentType)) {
-            return bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46;
-        }
-        return false;
-    }
 
     @PostMapping("/upload")
     public ResponseEntity<Map<String, String>> uploadFile(
@@ -53,39 +38,19 @@ public class FileUploadController {
         try {
             String cleanType = type == null ? "" : type.trim().toLowerCase();
             String contentType = file.getContentType();
-
-            if (file.isEmpty()) {
-                return error("File is empty");
+            if (file.isEmpty()
+                    || !ALLOWED_TYPES.contains(cleanType)
+                    || contentType == null
+                    || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Invalid file upload");
+                return ResponseEntity.badRequest().body(error);
             }
 
-            if (file.getSize() > MAX_FILE_SIZE) {
-                return error("File size exceeds maximum allowed size (5MB)");
-            }
-
-            if (!ALLOWED_TYPES.contains(cleanType)) {
-                return error("Invalid upload type: " + cleanType);
-            }
-
-            if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
-                return error("Invalid file type: " + contentType);
-            }
-
-            String originalName = file.getOriginalFilename();
-            if (originalName != null) {
-                String ext = originalName.contains(".") ?
-                    originalName.substring(originalName.lastIndexOf('.') + 1).toLowerCase() : "";
-                if (!ALLOWED_EXTENSIONS.contains(ext)) {
-                    return error("Invalid file extension: " + ext);
-                }
-            }
-
-            byte[] fileBytes = file.getBytes();
-            if (!validateMagicBytes(fileBytes, contentType)) {
-                return error("File content does not match declared type");
-            }
-
-            String safeName = (originalName == null ? "upload" : originalName)
-                .replaceAll("[^a-zA-Z0-9._-]", "_");
+            String originalName = Paths.get(file.getOriginalFilename() == null
+                    ? "upload"
+                    : file.getOriginalFilename()).getFileName().toString();
+            String safeName = originalName.replaceAll("[^a-zA-Z0-9._-]", "_");
 
             File dir = UPLOAD_ROOT.resolve(cleanType).toFile();
             if (!dir.exists()) dir.mkdirs();
@@ -93,7 +58,9 @@ public class FileUploadController {
             String fileName = UUID.randomUUID() + "_" + safeName;
             Path path = UPLOAD_ROOT.resolve(cleanType).resolve(fileName).normalize();
             if (!path.startsWith(UPLOAD_ROOT)) {
-                return error("Invalid file path");
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Invalid file path");
+                return ResponseEntity.badRequest().body(error);
             }
 
             Files.write(path, file.getBytes());
@@ -105,13 +72,40 @@ public class FileUploadController {
             return ResponseEntity.ok(response);
 
         } catch (IOException e) {
-            return error("Upload failed");
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Upload failed");
+            return ResponseEntity.badRequest().body(error);
         }
     }
 
-    private ResponseEntity<Map<String, String>> error(String message) {
-        Map<String, String> error = new HashMap<>();
-        error.put("error", message);
-        return ResponseEntity.badRequest().body(error);
+    @GetMapping("/{type}/{fileName:.+}")
+    public ResponseEntity<Resource> getFile(
+            @PathVariable String type,
+            @PathVariable String fileName) {
+        try {
+            String cleanType = type == null ? "" : type.trim().toLowerCase();
+            if (!ALLOWED_TYPES.contains(cleanType)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Path path = UPLOAD_ROOT.resolve(cleanType).resolve(fileName).normalize();
+            if (!path.startsWith(UPLOAD_ROOT) || !Files.exists(path) || !Files.isReadable(path)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Resource resource = new UrlResource(path.toUri());
+            String contentType = Files.probeContentType(path);
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                    .body(resource);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

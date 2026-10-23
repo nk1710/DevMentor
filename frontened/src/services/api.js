@@ -2,9 +2,15 @@ import axios from 'axios';
 
 export const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
+export const getFileUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    const backendOrigin = BASE_URL.replace(/\/api\/?$/, '');
+    return `${backendOrigin}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const api = axios.create({
-    baseURL: BASE_URL,
-    withCredentials: true
+    baseURL: BASE_URL
 });
 
 api.interceptors.request.use((config) => {
@@ -20,6 +26,7 @@ api.interceptors.response.use(
     error => {
         if (error.response?.status === 401 || error.response?.status === 403) {
             localStorage.removeItem('user');
+            localStorage.removeItem('token');
             window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -75,11 +82,17 @@ export const getAvailableSlots = (mentorId) =>
     api.get(`/slots/available/${mentorId}`);
 
 // BOOKING APIs
-export const createBooking = (mentorId, slotId) =>
-    api.post('/bookings/create', { mentorId, slotId });
+export const createBooking = (userId, mentorId, slotId) =>
+    api.post('/bookings/create', null, { params: { userId, mentorId, slotId } });
 
-export const getUserBookings = () =>
-    api.get('/bookings/user');
+export const createPaymentOrder = (mentorId, slotId) =>
+    api.post('/payments/create-order', null, { params: { mentorId, slotId } });
+
+export const verifyPaymentAndBook = (params) =>
+    api.post('/payments/verify', null, { params });
+
+export const getUserBookings = (userId) =>
+    api.get(`/bookings/user/${userId}`);
 
 export const getMentorBookings = (mentorId) =>
     api.get(`/bookings/mentor/${mentorId}`);
@@ -138,15 +151,10 @@ export const confirmCollegeSession = (sessionId) =>
 export const completeCollegeSession = (sessionId) =>
     api.put(`/colleges/sessions/${sessionId}/complete`);
 
-export const createOrder = (mentorId, slotId) =>
-    api.post('/payments/create-order', null, { params: { mentorId, slotId } });
-
-export const verifyPayment = (razorpayOrderId, razorpayPaymentId, razorpaySignature, mentorId, slotId) =>
-    api.post('/payments/verify', null, {
-        params: { razorpayOrderId, razorpayPaymentId, razorpaySignature, mentorId, slotId }
-    });
-
 export const uploadFile = (formData) =>
     api.post('/files/upload', formData);
+
+export const getAgoraToken = (channelName, uid) =>
+    api.get('/agora/token', { params: { channelName, uid } });
 
 export default api;

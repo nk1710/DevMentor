@@ -1,17 +1,13 @@
 package com.example.demo.service;
 
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Safelist;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.entity.User;
 import com.example.demo.repository.UserRepository;
 import java.util.List;
 
 @Service
-@Transactional
 public class UserService {
 
     @Autowired
@@ -20,25 +16,26 @@ public class UserService {
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     public User register(User user) {
-        if (user.getPassword() == null || user.getPassword().length() < 6) {
-            throw new IllegalArgumentException("Password must be at least 6 characters");
+        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
         }
-        if (user.getEmail() == null || !user.getEmail().matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
-            throw new IllegalArgumentException("Invalid email format");
+        if (userRepository.findByEmail(user.getEmail().trim()) != null) {
+            throw new IllegalArgumentException("Email already registered: " + user.getEmail());
         }
-        if (userRepository.findByEmail(user.getEmail()) != null) {
-            throw new IllegalArgumentException("Email already registered");
-        }
-        user.setPassword(encoder.encode(user.getPassword()));
+        // Force USER role on public registration to prevent privilege escalation
         user.setRole("USER");
+        user.setEmail(user.getEmail().trim().toLowerCase());
+        user.setPassword(encoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
     public User login(String email, String password) {
         if (email == null || password == null) return null;
-        User user = userRepository.findByEmail(email);
+        User user = userRepository.findByEmail(email.trim().toLowerCase());
         if (user == null) return null;
-        if (encoder.matches(password, user.getPassword())) return user;
+
+        boolean matches = encoder.matches(password, user.getPassword());
+        if (matches) return user;
         return null;
     }
 
@@ -54,25 +51,29 @@ public class UserService {
         User user = userRepository.findById(id).orElse(null);
         if (user == null) return null;
 
+        if (updatedUser.getName() != null)
+            user.setName(updatedUser.getName());
         if (updatedUser.getBio() != null)
-            user.setBio(Jsoup.clean(updatedUser.getBio(), Safelist.none()));
+            user.setBio(updatedUser.getBio());
         if (updatedUser.getSkills() != null)
-            user.setSkills(Jsoup.clean(updatedUser.getSkills(), Safelist.none()));
+            user.setSkills(updatedUser.getSkills());
         if (updatedUser.getLocation() != null)
-            user.setLocation(Jsoup.clean(updatedUser.getLocation(), Safelist.none()));
+            user.setLocation(updatedUser.getLocation());
         if (updatedUser.getPhone() != null)
-            user.setPhone(Jsoup.clean(updatedUser.getPhone(), Safelist.none()));
+            user.setPhone(updatedUser.getPhone());
         if (updatedUser.getLinkedinUrl() != null)
-            user.setLinkedinUrl(Jsoup.clean(updatedUser.getLinkedinUrl(), Safelist.none()));
+            user.setLinkedinUrl(updatedUser.getLinkedinUrl());
         if (updatedUser.getGithubUrl() != null)
-            user.setGithubUrl(Jsoup.clean(updatedUser.getGithubUrl(), Safelist.none()));
+            user.setGithubUrl(updatedUser.getGithubUrl());
         if (updatedUser.getResumeUrl() != null)
-            user.setResumeUrl(Jsoup.clean(updatedUser.getResumeUrl(), Safelist.none()));
+            user.setResumeUrl(updatedUser.getResumeUrl());
+        if (updatedUser.getProfilePicture() != null)
+            user.setProfilePicture(updatedUser.getProfilePicture());
 
         return userRepository.save(user);
     }
 
     public void deleteUser(Long id) {
-        userRepository.findById(id).ifPresent(u -> userRepository.delete(u));
+        userRepository.deleteById(id);
     }
 }

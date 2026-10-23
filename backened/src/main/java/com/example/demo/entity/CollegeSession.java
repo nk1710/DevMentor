@@ -1,47 +1,34 @@
 package com.example.demo.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
-@Table(name = "college_sessions", indexes = {
-    @Index(name = "idx_cs_college", columnList = "college_id"),
-    @Index(name = "idx_cs_mentor", columnList = "mentor_id"),
-    @Index(name = "idx_cs_status", columnList = "status")
-})
+@Table(name = "college_sessions")
 public class CollegeSession {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "college_id")
     @JsonIgnoreProperties({"password"})
     private College college;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "mentor_id")
     @JsonIgnoreProperties({"password"})
     private Mentor mentor;
 
-    @NotBlank
-    @Size(max = 200)
     private String topic;
-    @NotBlank
     private String scheduledDate;
-    @NotBlank
     private String scheduledTime;
-    private String status;
-    @Size(max = 50)
-    private String sessionType;
-    @Min(1)
-    @Max(500)
+    private String status; // PENDING / CONFIRMED / COMPLETED
+    private String sessionType; // LIVE / RECORDED
     private Integer maxStudents;
     private String roomId;
-    @Size(max = 2000)
-    private String questions;
+    private String questions; // students ke questions (JSON string)
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
