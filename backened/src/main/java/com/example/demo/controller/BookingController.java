@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import com.example.demo.entity.Booking;
 import com.example.demo.service.BookingService;
@@ -18,16 +19,19 @@ public class BookingController {
     public ResponseEntity<?> createBooking(
             @RequestParam Long userId,
             @RequestParam Long mentorId,
-            @RequestParam Long slotId) {
+            @RequestParam Long slotId,
+            Authentication authentication) {
 
         System.out.println("=== Booking API called ===");
-        Booking booking = bookingService.createBooking(userId, mentorId, slotId);
-
-        if (booking == null) {
-            return ResponseEntity.status(400)
-                .body("Booking failed — slot already booked or invalid IDs");
+        String userEmail = authentication != null ? authentication.getName() : null;
+        try {
+            Booking booking = bookingService.createBooking(userId, mentorId, slotId, userEmail);
+            return ResponseEntity.ok(booking);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body("Booking failed: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Booking failed: " + e.getMessage());
         }
-        return ResponseEntity.ok(booking);
     }
 
     @GetMapping("/user/{userId}")

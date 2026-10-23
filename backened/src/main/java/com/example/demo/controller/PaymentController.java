@@ -9,6 +9,7 @@ import com.example.demo.service.BookingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import javax.crypto.Mac;
@@ -106,14 +107,17 @@ public class PaymentController {
 
     @PostMapping("/verify")
     public ResponseEntity<?> verifyAndBook(
-            @RequestParam Long userId,
+            @RequestParam(required = false) Long userId,
             @RequestParam Long mentorId,
             @RequestParam Long slotId,
             @RequestParam(required = false) String paymentId,
             @RequestParam(required = false) String orderId,
-            @RequestParam(required = false) String signature) {
+            @RequestParam(required = false) String signature,
+            Authentication authentication) {
 
         System.out.println("=== Verifying payment: paymentId=" + paymentId + " orderId=" + orderId + " userId=" + userId);
+
+        String userEmail = authentication != null ? authentication.getName() : null;
 
         if (razorpayKeySecret != null && !razorpayKeySecret.trim().isEmpty() 
             && signature != null && !signature.trim().isEmpty() 
@@ -125,12 +129,14 @@ public class PaymentController {
             }
         }
 
-        Booking booking = bookingService.createBooking(userId, mentorId, slotId);
-        if (booking == null) {
-            return ResponseEntity.badRequest().body("Slot is already booked or mentor not found");
+        try {
+            Booking booking = bookingService.createBooking(userId, mentorId, slotId, userEmail);
+            return ResponseEntity.ok(booking);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Booking creation failed: " + e.getMessage());
         }
-
-        return ResponseEntity.ok(booking);
     }
 
     private boolean verifySignature(String orderId, String paymentId, String signature, String secret) {
